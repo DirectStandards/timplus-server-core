@@ -78,7 +78,9 @@ public class OfflineMessageStrategy extends BasicModule implements ServerFeature
 
     public void storeOffline(Message message) {
         if (message != null) {
-            // Do nothing if the message was sent to the server itself, an anonymous user or a non-existent user
+            
+        	
+        	// Do nothing if the message was sent to the server itself, an anonymous user or a non-existent user
             // Also ignore message carbons
             JID recipientJID = message.getTo();
             if (recipientJID == null || serverAddress.equals(recipientJID) ||
@@ -99,7 +101,7 @@ public class OfflineMessageStrategy extends BasicModule implements ServerFeature
                 XMPPServer.getInstance().getRoutingTable().routePacket(message.getFrom(), result, true);
                 return;
             }
-
+            
             // 8.5.2.  localpart@domainpart
             // 8.5.2.2.  No Available or Connected Resources
             if (recipientJID.getResource() == null) {
@@ -126,10 +128,10 @@ public class OfflineMessageStrategy extends BasicModule implements ServerFeature
                     // Either bounce or silently ignore, never store such messages
                     return;
                 }
-                // For a message stanza of type "error", the server MUST silently ignore the stanza.
-                else if (message.getType() == Message.Type.error) {
-                    return;
-                }
+                
+                // Error messages and AMP messages in TIM+, by specification, MUST be stored offline to allow the edge system the ability
+                // to be notified of error conditions
+
             }
 
             switch (type) {
@@ -188,16 +190,18 @@ public class OfflineMessageStrategy extends BasicModule implements ServerFeature
     }
 
     private void store(Message message) {
-        messageStore.addMessage(message);
-        // Inform listeners that an offline message was stored
-        if (!listeners.isEmpty()) {
-            for (OfflineMessageListener listener : listeners) {
-                try {
-                    listener.messageStored(message);    
-                } catch (Exception e) {
-                    Log.warn("An exception occurred while dispatching a 'messageStored' event!", e);
-                }
-            }
+        if (messageStore.addMessage(message))
+        {
+	        // Inform listeners that an offline message was stored
+	        if (!listeners.isEmpty()) {
+	            for (OfflineMessageListener listener : listeners) {
+	                try {
+	                    listener.messageStored(message);    
+	                } catch (Exception e) {
+	                    Log.warn("An exception occurred while dispatching a 'messageStored' event!", e);
+	                }
+	            }
+	        }
         }
     }
 

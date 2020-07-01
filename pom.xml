@@ -230,10 +230,7 @@
         </dependency>
 
         <!-- Logging -->
-        <dependency>
-            <groupId>org.apache.logging.log4j</groupId>
-            <artifactId>log4j-slf4j-impl</artifactId>
-        </dependency>
+
         <dependency>
             <groupId>org.apache.logging.log4j</groupId>
             <artifactId>log4j-api</artifactId>
@@ -242,17 +239,20 @@
             <groupId>org.apache.logging.log4j</groupId>
             <artifactId>log4j-core</artifactId>
         </dependency>
-        <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>jcl-over-slf4j</artifactId>
-            <version>${slf4j.version}</version>
-        </dependency>
+
 
         <!-- RSS feed -->
         <dependency>
             <groupId>com.rometools</groupId>
             <artifactId>rome</artifactId>
             <version>1.12.0</version>
+        </dependency>
+
+        <!-- Message Monitoring feed -->
+        <dependency>
+            <groupId>org.directtruststandards</groupId>
+            <artifactId>timplus-msg-monitor</artifactId>
+            <version>1.0.0-SNAPSHOT</version>
         </dependency>
 
         <!-- Random stuff -->

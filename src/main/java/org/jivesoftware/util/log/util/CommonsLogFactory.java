@@ -130,41 +130,5 @@ public class CommonsLogFactory extends LogFactory {
         };
     }
 
-    @Override
-    public Object getAttribute(String string) {
-        return null;
-    }
 
-    @Override
-    public String[] getAttributeNames() {
-        return new String[0];
-    }
-
-    @Override
-    public org.apache.commons.logging.Log getInstance(Class aClass)
-            throws LogConfigurationException {
-        return log;
-    }
-
-    @Override
-    public org.apache.commons.logging.Log getInstance(String string)
-            throws LogConfigurationException
-    {
-        return log;
-    }
-
-    @Override
-    public void release() {
-
-    }
-
-    @Override
-    public void removeAttribute(String string) {
-
-    }
-
-    @Override
-    public void setAttribute(String string, Object object) {
-
-    }
 }

@@ -119,23 +119,23 @@ public class OfflineMessageStore extends BasicModule implements UserEventListene
      *
      * @param message the message to store.
      */
-    public void addMessage(Message message) {
+    public boolean addMessage(Message message) {
         if (message == null) {
-            return;
+            return false;
         }
         if(!shouldStoreMessage(message)) {
-            return;
+            return false;
         }
         JID recipient = message.getTo();
         String username = recipient.getNode();
         // If the username is null (such as when an anonymous user), don't store.
         if (username == null || !UserManager.getInstance().isRegisteredUser(recipient)) {
-            return;
+            return false;
         }
         else
         if (!DomainManager.getInstance().isRegisteredDomain(recipient.getDomain())) {
             // Do not store messages sent to users of remote servers
-            return;
+            return false;
         }
 
         long messageID = SequenceManager.nextID(JiveConstants.OFFLINE);
@@ -169,6 +169,8 @@ public class OfflineMessageStore extends BasicModule implements UserEventListene
             size += msgXML.length();
             sizeCache.put(username, size);
         }
+        
+        return true;
     }
 
     /**

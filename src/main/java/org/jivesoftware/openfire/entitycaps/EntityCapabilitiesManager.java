@@ -24,6 +24,7 @@ import org.dom4j.QName;
 import org.jivesoftware.openfire.IQRouter;
 import org.jivesoftware.openfire.XMPPServer;
 import org.jivesoftware.openfire.container.BasicModule;
+import org.jivesoftware.openfire.domain.DomainManager;
 import org.jivesoftware.openfire.event.UserEventDispatcher;
 import org.jivesoftware.openfire.event.UserEventListener;
 import org.jivesoftware.openfire.user.User;
@@ -186,7 +187,13 @@ public class EntityCapabilitiesManager extends BasicModule implements IQResultLi
             IQ iq = new IQ(IQ.Type.get);
             iq.setTo(packet.getFrom());
 
-            String serverName = XMPPServer.getInstance().getServerInfo().getXMPPDomain();
+            String serverName = "";
+            if (packet.getTo() != null)
+            	serverName = packet.getTo().getDomain();
+            else if (packet.getFrom() != null && DomainManager.getInstance().isRegisteredDomain(packet.getFrom().getDomain()))
+            	serverName = packet.getFrom().getDomain();
+            else
+            	serverName = XMPPServer.getInstance().getServerInfo().getXMPPDomain();
             iq.setFrom(serverName);
 
             iq.setChildElement("query", "http://jabber.org/protocol/disco#info");
