@@ -68,7 +68,7 @@ public class DefaultFileTransferManager extends BasicModule implements FileTrans
      * transfer in the system.
      */
     public boolean isMatchProxyTransfer() {
-        return JiveGlobals.getBooleanProperty("xmpp.proxy.transfer.required", true);
+        return JiveGlobals.getBooleanProperty("xmpp.proxy.transfer.required", false);
     }
 
     protected void cacheFileTransfer(String key, FileTransfer transfer) {

@@ -74,27 +74,6 @@ public class EncryptionArtifactFactory
     {
         try
         {
-        	/*
-            if ( keyManagerFactory == null )
-            {
-                try
-                {
-                    // OF-1501: If multiple certificates are available, the 'NewSunX509' implementation in the SunJSSE
-                    // provider makes the effort to pick a certificate with the appropriate key usage and prefers valid
-                    // to expired certificates.
-                    keyManagerFactory = KeyManagerFactory.getInstance( "NewSunX509" );
-                }
-                catch ( NoSuchAlgorithmException e )
-                {
-                    Log.info( "Unable to load the 'NewSunX509' KeyManager implementation. Will fall back to the default." );
-                    keyManagerFactory = KeyManagerFactory.getInstance( KeyManagerFactory.getDefaultAlgorithm() );
-                }
-
-                keyManagerFactory.init( configuration.getIdentityStore().getStore(), configuration.getIdentityStoreConfiguration().getPassword() );
-            }
-
-            return keyManagerFactory.getKeyManagers();
-            */
             final Builder builder = Builder.newInstance(configuration.getIdentityStore().getStore(),
                     new PasswordProtection(configuration.getIdentityStoreConfiguration().getPassword()));
             return new KeyManager[] {new ServerConnectionKeyManager(builder)};
@@ -107,6 +86,7 @@ public class EncryptionArtifactFactory
         }
     }
 
+    
     /**
      * Generates KeyManager instances suitable for connections that are created based on a particular configuration.
      *

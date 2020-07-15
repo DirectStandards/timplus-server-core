@@ -23,13 +23,23 @@ import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
+import javax.net.ServerSocketFactory;
+
+import org.eclipse.jetty.util.ssl.SslContextFactory;
+import org.jivesoftware.openfire.XMPPServer;
 import org.jivesoftware.openfire.auth.UnauthorizedException;
 import org.jivesoftware.openfire.filetransfer.FileTransferManager;
 import org.jivesoftware.openfire.filetransfer.FileTransferRejectedException;
+import org.jivesoftware.openfire.filetransfer.proxy.credentials.ProxyServerCredentialManager;
+import org.jivesoftware.openfire.spi.ConnectionConfiguration;
+import org.jivesoftware.openfire.spi.ConnectionManagerImpl;
+import org.jivesoftware.openfire.spi.ConnectionType;
+import org.jivesoftware.openfire.spi.EncryptionArtifactFactory;
 import org.jivesoftware.openfire.stats.Statistic;
 import org.jivesoftware.openfire.stats.StatisticsManager;
 import org.jivesoftware.openfire.stats.i18nStatistic;
@@ -94,43 +104,68 @@ public class ProxyConnectionManager {
             }
         }
         reset();
-        socketProcess = executor.submit(new Runnable() {
+        socketProcess = executor.submit(new Runnable() 
+        {
             @Override
-            public void run() {
-                try {
-                    serverSocket = new ServerSocket(port, -1, bindInterface);
+            public void run() 
+            {
+                try 
+                {
+                    final ConnectionManagerImpl connectionManager = ( (ConnectionManagerImpl) XMPPServer.getInstance().getConnectionManager() );
+                    final ConnectionConfiguration configuration = connectionManager.getListener( ConnectionType.SOCKET_S2S, true ).generateConnectionConfiguration();
+
+                	final SslContextFactory sslContextFactory = new EncryptionArtifactFactory( configuration ).getSslContextFactory();
+                    
+                    sslContextFactory.start();
+                    
+                	final ServerSocketFactory socketFactory = sslContextFactory.getSslContext().getServerSocketFactory();
+
+                    serverSocket = socketFactory.createServerSocket(port, -1, bindInterface);
+
                 }
-                catch (IOException e) {
+                catch (Exception e) 
+                {
                     Log.error("Error creating server socket", e);
                     return;
                 }
-                while (serverSocket.isBound()) {
+                
+                while (serverSocket.isBound()) 
+                {
                     final Socket socket;
-                    try {
+                    try 
+                    {
                         socket = serverSocket.accept();
                     }
-                    catch (IOException e) {
-                        if (!serverSocket.isClosed()) {
+                    catch (IOException e) 
+                    {
+                        if (!serverSocket.isClosed()) 
+                        {
                             Log.error("Error accepting proxy connection", e);
                             continue;
                         }
-                        else {
+                        else 
+                        {
                             break;
                         }
                     }
-                    executor.submit(new Runnable() {
+                    executor.submit(new Runnable() 
+                    {
                         @Override
-                        public void run() {
-                            try {
+                        public void run() 
+                        {
+                            try 
+                            {
                                 processConnection(socket);
                             }
-                            catch (IOException ie) {
-                                Log.error("Error processing file transfer proxy connection",
-                                        ie);
-                                try {
+                            catch (IOException ie) 
+                            {
+                                Log.error("Error processing file transfer proxy connection", ie);
+                                try 
+                                {
                                     socket.close();
                                 }
-                                catch (IOException e) {
+                                catch (IOException e) 
+                                {
                                     /* Do Nothing */
                                 }
                             }
@@ -164,12 +199,12 @@ public class ProxyConnectionManager {
         }
 
         int authMethod = -1;
-        for (int anAuth : auth) {
-            authMethod = (anAuth == 0 ? 0 : -1); // only auth method
-            // 0, no
-            // authentication,
-            // supported
-            if (authMethod == 0) {
+        for (int anAuth : auth) 
+        {
+            authMethod = (anAuth == 2 ? 0 : -1); // only auth method
+            // 2, username/passwowrd
+            if (authMethod == 0) 
+            {
                 break;
             }
         }
@@ -177,12 +212,52 @@ public class ProxyConnectionManager {
             throw new IOException("Authentication method not supported");
         }
 
-        // No auth method so respond with success
+        // Username/password auth method so respond with success
         byte[] cmd = new byte[2];
         cmd[0] = (byte) 0x05;
-        cmd[1] = (byte) 0x00;
+        cmd[1] = (byte) 0x02;
         out.write(cmd);
-
+        out.flush();
+        
+        // authenticate
+        
+        // read the subnegotiation version
+        b = in.read();
+        if (b != 1) {
+            throw new IOException("Subnegotiation version must be 1");
+        }
+        
+        // read the username length and username
+        b = in.read();
+        byte[] usernameBytes = new byte[b];
+        for (int i = 0; i < b; i++) 
+        {
+        	usernameBytes[i] = (byte)in.read();
+        }
+        
+        // read the password length and password
+        b = in.read();
+        byte[] passwordBytes = new byte[b];
+        for (int i = 0; i < b; i++) 
+        {
+        	passwordBytes[i] = (byte)in.read();
+        }
+        
+        byte[] authResult = new byte[2];
+        authResult[0] = (byte) 0x01;
+        if (!ProxyServerCredentialManager.getInstance().validateCredential(new String(usernameBytes, StandardCharsets.US_ASCII), new String(passwordBytes, StandardCharsets.US_ASCII)))
+        {
+        	// anything other than 0 is failure
+        	authResult[1] = (byte) 0x01;
+            out.write(authResult);
+            out.flush();
+        	throw new IOException("Invalid credentials");
+        }
+        
+        // 0 = successful
+    	authResult[1] = (byte) 0x00;
+        out.write(authResult);
+        
         String responseDigest = processIncomingSocks5Message(in);
         try {
             synchronized (connectionLock) {

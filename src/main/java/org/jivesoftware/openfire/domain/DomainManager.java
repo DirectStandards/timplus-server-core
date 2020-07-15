@@ -8,6 +8,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.jivesoftware.openfire.XMPPServer;
 import org.jivesoftware.openfire.muc.MultiUserChatManager;
 import org.jivesoftware.util.AlreadyExistsException;
+import org.jivesoftware.util.JiveGlobals;
 import org.jivesoftware.util.NotFoundException;
 import org.jivesoftware.util.SystemProperty;
 import org.jivesoftware.util.SystemProperty.Builder;
@@ -23,6 +24,8 @@ public class DomainManager
 	public static final SystemProperty<Class> DOMAIN_PROVIDER;
 	private static DomainProvider provider;
 	
+	private static final String PROXY_SERVICE_NAME;
+	
     private final Cache<String, Domain> domainCache;
     private final Cache<String, Boolean> remoteDomainCache;
     private final XMPPServer xmppServer;
@@ -33,6 +36,8 @@ public class DomainManager
 				.setKey("provider.domain.className").setBaseClass(DomainProvider.class)
 				.setDefaultValue(DefaultDomainProvider.class).addListener(DomainManager::initProvider).setDynamic(true)
 				.build();
+		
+		PROXY_SERVICE_NAME = JiveGlobals.getProperty("xmpp.proxy.service", "ftproxystream");
 	}
 	
     private static class DomainManagerContainer 
@@ -148,6 +153,8 @@ public class DomainManager
     	
     	if (domainName.startsWith(MultiUserChatManager.DEFAULT_MUC_SERVICE))
     		topDomain = domainName.substring(MultiUserChatManager.DEFAULT_MUC_SERVICE.length() + 1);
+    	else if (domainName.startsWith(PROXY_SERVICE_NAME))
+    		topDomain = domainName.substring(PROXY_SERVICE_NAME.length() + 1);
     	else 
     		return false;
     	

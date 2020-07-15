@@ -26,7 +26,6 @@ import javax.net.ssl.X509ExtendedKeyManager;
 import javax.net.ssl.X509KeyManager;
 
 import org.apache.commons.lang3.StringUtils;
-import org.jivesoftware.openfire.Connection;
 import org.jivesoftware.util.ReferenceIDUtil;
 
 /**
