@@ -20,16 +20,27 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.lang.reflect.Constructor;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 import javax.net.ServerSocketFactory;
+import javax.net.ssl.SNIHostName;
+import javax.net.ssl.SNIMatcher;
+import javax.net.ssl.SNIServerName;
+import javax.net.ssl.SSLParameters;
+import javax.net.ssl.SSLServerSocket;
+import javax.net.ssl.StandardConstants;
 
+import org.eclipse.jetty.util.StringUtil;
+import org.eclipse.jetty.util.ssl.SSLObjectFactory;
 import org.eclipse.jetty.util.ssl.SslContextFactory;
 import org.jivesoftware.openfire.XMPPServer;
 import org.jivesoftware.openfire.auth.UnauthorizedException;
@@ -122,6 +133,22 @@ public class ProxyConnectionManager {
 
                     serverSocket = socketFactory.createServerSocket(port, -1, bindInterface);
 
+                    if (serverSocket instanceof SSLServerSocket)
+                    {
+                    	final SSLServerSocket sslServerSocket = SSLServerSocket.class.cast(serverSocket);
+                    	final SSLParameters params = sslServerSocket.getSSLParameters();
+                    	
+                    	final SNIMatcher matcher = SSLObjectFactory.createAliasMatcher();
+                    	
+                    	
+                    	final List<SNIMatcher> matchers = new ArrayList<>(params.getSNIMatchers());
+                    	matchers.add(matcher);
+                    	
+                    	params.setSNIMatchers(matchers);
+                    	
+                    	sslServerSocket.setSSLParameters(params);
+                    }
+                    
                 }
                 catch (Exception e) 
                 {
@@ -458,4 +485,38 @@ public class ProxyConnectionManager {
             return true;
         }
     }
+    
+    class AliasSNIMatcher extends SNIMatcher
+    {
+        private String _host;
+
+        AliasSNIMatcher()
+        {
+            super(StandardConstants.SNI_HOST_NAME);
+        }
+
+        @Override
+        public boolean matches(SNIServerName serverName)
+        {
+
+            if (serverName instanceof SNIHostName)
+            {
+                _host = StringUtil.asciiToLowerCase(((SNIHostName)serverName).getAsciiName());
+            }
+            else
+            {
+            }
+
+            // Return true and allow the KeyManager to accept or reject when choosing a certificate.
+            // If we don't have a SNI host, or didn't see any certificate aliases,
+            // just say true as it will either somehow work or fail elsewhere.
+            return true;
+        }
+
+        public String getHost()
+        {
+            return _host;
+        }
+    }
+
 }

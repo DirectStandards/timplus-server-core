@@ -267,7 +267,7 @@ public class EncryptionArtifactFactory
         try
         {
             sslContextFactory = new SslContextFactory.Server();
-
+            //((SslContextFactory.Server)sslContextFactory).setSniRequired(true);
         	//sslContextFactory = new SslContextFactory();
         	
             sslContextFactory.setTrustStore( configuration.getTrustStore().getStore() );
