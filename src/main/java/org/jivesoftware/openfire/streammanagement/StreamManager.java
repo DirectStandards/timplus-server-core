@@ -52,7 +52,7 @@ public class StreamManager {
 
     public static SystemProperty<Boolean> ACTIVE = SystemProperty.Builder.ofType( Boolean.class )
         .setKey("stream.management.active")
-        .setDefaultValue(true)
+        .setDefaultValue(false)
         .setDynamic(true)
         .build();
 
