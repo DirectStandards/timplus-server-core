@@ -16,12 +16,14 @@
 
 package org.jivesoftware.openfire.vcard;
 
+import java.io.StringReader;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.StringTokenizer;
 
 import org.dom4j.Element;
+import org.dom4j.io.SAXReader;
 import org.dom4j.tree.DefaultElement;
 import org.jivesoftware.openfire.XMPPServer;
 import org.jivesoftware.openfire.container.BasicModule;
@@ -29,15 +31,16 @@ import org.jivesoftware.openfire.disco.ServerFeaturesProvider;
 import org.jivesoftware.openfire.event.UserEventAdapter;
 import org.jivesoftware.openfire.event.UserEventDispatcher;
 import org.jivesoftware.openfire.user.User;
+import org.jivesoftware.smack.util.PacketParserUtils;
+import org.jivesoftware.smackx.vcardtemp.packet.VCard;
 import org.jivesoftware.util.AlreadyExistsException;
 import org.jivesoftware.util.NotFoundException;
-import org.jivesoftware.util.PropertyEventDispatcher;
-import org.jivesoftware.util.PropertyEventListener;
 import org.jivesoftware.util.SystemProperty;
 import org.jivesoftware.util.cache.Cache;
 import org.jivesoftware.util.cache.CacheFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.xmlpull.v1.XmlPullParser;
 
 /**
  * Manages VCard information for users.
@@ -149,6 +152,27 @@ public class VCardManager extends BasicModule implements ServerFeaturesProvider 
         return answer;
     }
 
+    public void setVCardAsXML(String username, String xml)
+    {
+    	try
+    	{
+	        final SAXReader xmlReader = new SAXReader();
+	        xmlReader.setEncoding("UTF-8");
+	        
+	        final Element rootElement =
+	                xmlReader.read(new StringReader(xml)).getRootElement();
+	        
+	        final Element vCardElement = rootElement.elementIterator().next();
+	        
+	        
+	        setVCard(username, vCardElement);
+    	}
+    	catch (Exception e)
+    	{
+    		Log.warn("Failed to parse vCard xml to Element", e);
+    	}
+    }
+    
     /**
      * Sets the user's vCard information. The new vCard information will be persistent. Advanced
      * user systems can use vCard information to link to user directory information or store
@@ -241,6 +265,50 @@ public class VCardManager extends BasicModule implements ServerFeaturesProvider 
         return vCardElement == null ? null : vCardElement.createCopy();
     }
 
+    public VCard getVCardAsVCard(String username)
+    {
+        final Element vCardElement = getOrLoadVCard(username);
+        if (vCardElement == null)
+        	return null;
+        
+        try
+        {
+	        final String xml = vCardElement.asXML();
+	        
+	        XmlPullParser parser = PacketParserUtils.newXmppParser(new StringReader ( xml) );
+	
+	        boolean done = false;
+	        int eventType = parser.getEventType();
+            while (!done) 
+            {
+                switch (eventType) 
+                {
+                	case XmlPullParser.START_TAG:
+                	{	
+	            	    org.jivesoftware.smackx.vcardtemp.provider.VCardProvider prov = 
+	    	        	new org.jivesoftware.smackx.vcardtemp.provider.VCardProvider();
+	    	        
+	            	    return prov.parse(parser);
+                	}
+                	case XmlPullParser.END_DOCUMENT:
+                	{
+                		done = true;
+                	}
+                }
+
+            	eventType = parser.next();
+            }
+
+	        return null;
+        }
+        catch (Throwable e)
+        {
+        	e.printStackTrace();
+        	Log.warn("Error parsing vcard during load", e);
+        	return null;
+        }
+    }
+    
     private Element getOrLoadVCard(String username) {
         Element vCardElement = vcardCache.get(username);
         if (vCardElement == null) {

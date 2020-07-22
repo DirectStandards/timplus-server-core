@@ -46,6 +46,7 @@ import org.jivesoftware.openfire.roster.RosterManager;
 import org.jivesoftware.openfire.security.SecurityAuditManager;
 import org.jivesoftware.openfire.user.User;
 import org.jivesoftware.openfire.user.UserManager;
+import org.jivesoftware.openfire.vcard.VCardManager;
 import org.jivesoftware.util.cache.Cache;
 import org.jivesoftware.util.cache.CacheFactory;
 import org.slf4j.Logger;
@@ -107,6 +108,10 @@ public class WebManager extends WebBean {
         return getXMPPServer().getUserManager();
     }
 
+    public VCardManager getVCardManager() {
+        return getXMPPServer().getVCardManager();
+    }
+    
     public DomainManager getDomainManager() {
         return getXMPPServer().getDomainManager();
     }

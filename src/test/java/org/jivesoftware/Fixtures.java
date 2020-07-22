@@ -8,6 +8,7 @@ import static org.mockito.Mockito.withSettings;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
+import java.io.StringReader;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.Collection;
@@ -17,8 +18,10 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
+import org.apache.commons.lang3.StringUtils;
 import org.dom4j.Document;
 import org.dom4j.DocumentException;
+import org.dom4j.Element;
 import org.dom4j.io.SAXReader;
 import org.jivesoftware.openfire.IQRouter;
 import org.jivesoftware.openfire.XMPPServer;
@@ -31,7 +34,10 @@ import org.jivesoftware.openfire.user.User;
 import org.jivesoftware.openfire.user.UserAlreadyExistsException;
 import org.jivesoftware.openfire.user.UserNotFoundException;
 import org.jivesoftware.openfire.user.UserProvider;
+import org.jivesoftware.openfire.vcard.VCardProvider;
+import org.jivesoftware.util.AlreadyExistsException;
 import org.jivesoftware.util.JiveGlobals;
+import org.jivesoftware.util.NotFoundException;
 import org.xmpp.packet.IQ;
 import org.xmpp.packet.JID;
 
@@ -101,6 +107,62 @@ public final class Fixtures {
         return iqRouter;
     }
 
+    public static class StubVCardProvider implements VCardProvider
+    {
+    	protected String vCardXml;
+    	
+    	public void setVCardXML(String vCardXml)
+    	{
+    		this.vCardXml = vCardXml;
+    	}
+    	
+		@Override
+		public Element loadVCard(String username)
+		{
+			if (StringUtils.isEmpty(vCardXml))
+				return null;
+			
+			final SAXReader xmlReader = new SAXReader();
+            
+			try
+			{
+				return xmlReader.read(new StringReader(vCardXml)).getRootElement();
+			}
+			catch (Exception e)
+			{
+				return null;
+			}
+			
+		}
+
+		@Override
+		public Element createVCard(String username, Element vCardElement) throws AlreadyExistsException
+		{
+			return vCardElement;
+		}
+
+		@Override
+		public Element updateVCard(String username, Element vCardElement) throws NotFoundException
+		{
+			return vCardElement;
+		}
+
+		@Override
+		public void deleteVCard(String username)
+		{
+
+			
+		}
+
+		@Override
+		public boolean isReadOnly()
+		{
+
+			return false;
+		}
+    	
+    }
+    
     public static class StubDomainProvider implements DomainProvider
     {
 

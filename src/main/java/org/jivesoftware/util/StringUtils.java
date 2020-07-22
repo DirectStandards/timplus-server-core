@@ -1273,4 +1273,9 @@ public final class StringUtils {
         }
         return tokens;
     }
+    
+    public static boolean isEmpty(String str)
+    {
+    	return (str == null || str.trim().isEmpty());
+    }
 }

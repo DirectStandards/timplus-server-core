@@ -70,24 +70,43 @@ import org.xmpp.packet.PacketError;
  *
  * @author Iain Shigeoka
  */
-public class IQvCardHandler extends IQHandler {
+public class IQvCardHandler extends IQHandler 
+{
 
     private static final Logger Log = LoggerFactory.getLogger(IQvCardHandler.class);
 
+    public static final String PROPERTY_ALLOW_CLIENT_SET = "xmpp.vcard.allowClientSet";
+    
     private IQHandlerInfo info;
     private XMPPServer server;
     private UserManager userManager;
-
-    public IQvCardHandler() {
+    private boolean allowClientSet;
+    
+    public IQvCardHandler() 
+    {
         super("XMPP vCard Handler");
         info = new IQHandlerInfo("vCard", "vcard-temp");
+        
+        final String boolStr = JiveGlobals.getProperty( PROPERTY_ALLOW_CLIENT_SET , "false");
+         
+        allowClientSet = Boolean.parseBoolean(boolStr);
     }
 
     @Override
     public IQ handleIQ(IQ packet) throws UnauthorizedException, PacketException {
         IQ result = IQ.createResultIQ(packet);
         IQ.Type type = packet.getType();
-        if (type.equals(IQ.Type.set)) {
+        if (type.equals(IQ.Type.set)) 
+        {
+        	// If the policy does not allow an client set
+        	// vcard attributes, then send a not allowed error
+        	if (!allowClientSet)
+        	{
+        		IQ error = IQ.createResultIQ(packet);
+        		error.setError(PacketError.Condition.not_allowed);
+        		
+        		return error;
+        	}
             try {
                 User user = userManager.getUser(packet.getFrom().getNode());
                 Element vcard = packet.getChildElement();
