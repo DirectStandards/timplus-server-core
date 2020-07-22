@@ -86,18 +86,15 @@
         return;
     }
 
-    // Load the vcard object
-    VCard vCard = null;
+    // Load the vcard objec
+    VCard vCard = webManager.getVCardManager().getVCardAsVCard(username);
 
-    vCard = webManager.getVCardManager().getVCardAsVCard(username);
-
+	if (vCard == null)
+		vCard = new VCard();
+    
     // Handle a save
     if (save) 
     {
-
-		if (vCard == null)
-			vCard = new VCard();
-		
         if (errors.size() == 0) 
         {
         	vCard.setFirstName(firstname);
