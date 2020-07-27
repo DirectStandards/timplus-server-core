@@ -1,6 +1,7 @@
 package org.jivesoftware.openfire.keystore;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
+import org.jivesoftware.util.crl.impl.CRLRevocationManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -169,6 +170,56 @@ public class OpenfireX509TrustManager implements X509TrustManager
 
         Log.debug( "Attempting to verify a chain of {} certificates.", chain.length );
 
+        /*
+         * The certificate path validation process checks for valid dates in certificates,
+         * but we will choose to fail fast in anything in the chain is expired.  This will save
+         * time from having to lookup intermediate certificates (if necessary) if the given certificates
+         * are already not valid.
+         */
+        X509Certificate endEntityCert = null;
+		try
+		{
+			endEntityCert = CertificateUtils.identifyEndEntityCertificate( Arrays.asList( chain ) );
+		} 
+		catch (Exception e1)
+		{
+			throw new IllegalArgumentException( "Could not get end entity certificate from chain.");
+		}
+        
+		final Set<X509Certificate> acceptedServerCerts = CertificateUtils.filterValid( endEntityCert );
+        if (acceptedServerCerts.size() <= 0)
+        {
+        	// the end entity certificate is invalid
+        	Log.warn( "TLS certificate chain has an expired certificate.  This is an invalid chain and the connection is rejected." );
+        	throw new CertPathBuilderException("The certificate chain contains an expired certificate");
+        }
+        
+        /*
+         * Make sure the certificate isn't revoke.  The default cert path checker can do this work, but the revocation
+         * manager uses some optimizations in terms of caching so the CRL doesn't have to be downloaded every time.
+         */
+        try
+        {
+        	
+        	final CRLRevocationManager revManager = CRLRevocationManager.getInstance();
+        	
+        	if (revManager.isRevoked(endEntityCert))
+        	{
+        		Log.warn( "TLS end enity certificate has been marked as revoked.  The connection is rejected." );
+        		throw new CertPathBuilderException("TLS end enity certificate has been marked as revoked.");
+        	}
+        }
+        catch (CertPathBuilderException e)
+        {
+        	throw e;
+        }
+        catch (Exception e)
+        {
+        	throw new IllegalArgumentException("Could not check revocation status of end entity certificate.");
+        }
+        
+        
+        
         // The set of trusted issuers (for this invocation), based on the issuers from the truststore.
         final Set<X509Certificate> trustedIssuers = new HashSet<>();
         trustedIssuers.addAll( this.trustedIssuers );

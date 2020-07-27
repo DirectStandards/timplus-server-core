@@ -1,5 +1,8 @@
 package org.jivesoftware.openfire.keystore;
 
+import org.jivesoftware.Fixtures;
+import org.jivesoftware.util.JiveGlobals;
+import org.jivesoftware.util.crl.impl.CRLRevocationManager;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -20,6 +23,7 @@ import java.util.*;
  */
 public class OpenfireX509TrustManagerTest
 {
+
     /**
      * An instance that is freshly recreated before each test.
      */
@@ -39,6 +43,8 @@ public class OpenfireX509TrustManagerTest
     @Before
     public void createFixture() throws Exception
     {
+    	Fixtures.reconfigureOpenfireHome();
+    	
         // Create a fresh store in a location that holds only temporary files.
         final String tempDir = System.getProperty("java.io.tmpdir");
         location = tempDir + ( tempDir.endsWith( File.separator ) ? "" : File.separator ) + UUID.randomUUID();
@@ -64,6 +70,8 @@ public class OpenfireX509TrustManagerTest
 
         // Create the Trust Manager that is subject of these tests.
         systemUnderTest = new OpenfireX509TrustManager( trustStore, false, true );
+        
+        JiveGlobals.setProperty( CRLRevocationManager.PROPERTY_CRL_IGNORE_CLR_CHECKING , "true");
     }
 
     /**
@@ -78,6 +86,8 @@ public class OpenfireX509TrustManagerTest
     @After
     public void tearDown() throws Exception
     {
+    	JiveGlobals.setProperty( CRLRevocationManager.PROPERTY_CRL_IGNORE_CLR_CHECKING , "");
+    	
         // Attempt to delete any left-overs from the test.
         validChain = null;
 

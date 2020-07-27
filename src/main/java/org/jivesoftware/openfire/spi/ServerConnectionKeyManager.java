@@ -31,7 +31,7 @@ import org.jivesoftware.util.ReferenceIDUtil;
 /**
  * Custom TLS connection key manager that select certificates based on 
  * TIM+ specific requirements.
- * @author gm2552
+ * @author Greg Meyer
  *
  */
 public class ServerConnectionKeyManager extends X509ExtendedKeyManager implements X509KeyManager

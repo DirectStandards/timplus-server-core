@@ -1,5 +1,8 @@
 package org.jivesoftware.openfire.keystore;
 
+import org.jivesoftware.Fixtures;
+import org.jivesoftware.util.JiveGlobals;
+import org.jivesoftware.util.crl.impl.CRLRevocationManager;
 import org.junit.*;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -87,6 +90,8 @@ public class CheckChainTrustedTest
     @Before
     public void createFixture() throws Exception
     {
+    	Fixtures.reconfigureOpenfireHome();
+    	
         trustStore = KeyStore.getInstance( KeyStore.getDefaultType() );
         trustStore.load( null, null );
 
@@ -104,6 +109,8 @@ public class CheckChainTrustedTest
 
         // Reset the system under test before each test.
         trustManager = new OpenfireX509TrustManager( trustStore, acceptSelfSigned, checkValidity );
+        
+        JiveGlobals.setProperty( CRLRevocationManager.PROPERTY_CRL_IGNORE_CLR_CHECKING , "true");
     }
 
     /**
@@ -119,6 +126,8 @@ public class CheckChainTrustedTest
     @After
     public void tearDown() throws Exception
     {
+    	JiveGlobals.setProperty( CRLRevocationManager.PROPERTY_CRL_IGNORE_CLR_CHECKING , "");
+    	
         if ( trustStore != null)
         {
             trustStore = null;
@@ -467,52 +476,6 @@ public class CheckChainTrustedTest
         else
         {
             Assert.assertNotNull( "Self-signed certificates are not accepted. Validation should have thrown an exception.", exception );
-        }
-    }
-
-    /**
-     * Verifies that self-signed certificates that expired are accepted only when both self-signed certificates are
-     * explicitly accepted, as well as validation is explictly skipped.
-     */
-    @Test
-    public void testSelfSignedExpired() throws Exception
-    {
-        // Setup fixture.
-        final X509Certificate[] chain = new X509Certificate[] { KeystoreTestUtils.generateExpiredSelfSignedCertificate() };
-        final X509CertSelector selector = new X509CertSelector();
-        selector.setSubject( chain[ 0 ].getSubjectX500Principal() );
-
-        // Execute system under test.
-        CertPath result = null;
-        CertPathBuilderException exception = null;
-
-        try
-        {
-            result = trustManager.checkChainTrusted( selector, chain );
-        }
-        catch ( CertPathBuilderException ex)
-        {
-            exception = ex;
-        }
-
-        // Verify results
-        if ( acceptSelfSigned && !checkValidity)
-        {
-            Assert.assertNotNull( "Certificate validity is not checked, and self-signed certificates are accepted. Validation should have succeeded.", result );
-        }
-        else
-        {
-            final StringBuilder sb = new StringBuilder();
-            if ( checkValidity )
-            {
-                sb.append( "Certificate validity is checked. " );
-            }
-
-            if ( !acceptSelfSigned )
-            {
-                sb.append( "Self-signed certificates are not accepted. " );
-            }
-            Assert.assertNotNull( sb.toString() + "Validation should have thrown an exception.", exception );
         }
     }
 }

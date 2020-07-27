@@ -156,33 +156,37 @@ public class CertificateUtils
         final Map<Principal, X509Certificate> byIssuer = new HashMap<>();
         final Map<Principal, X509Certificate> bySubject = new HashMap<>();
 
-        for ( final X509Certificate certificate : certificates ) {
-            final Principal issuer = certificate.getIssuerDN();
-            final Principal subject = certificate.getSubjectDN();
-
-            // By issuer
-            if ( issuer.equals( subject ))
-            {
-                // self-signed: use null key.
-                final X509Certificate sameIssuer = byIssuer.put( null, certificate );
-                if ( sameIssuer != null )
-                {
-                    throw new CertificateException( "The provided input should not contain multiple root CA certificates. Issuer of first detected Root CA certificate: " + issuer + " Issuer of second detected Root CA certificate: : " + sameIssuer );
-                }
-            }
-            else
-            {
-                // regular issuer
-                if ( byIssuer.put( issuer, certificate ) != null )
-                {
-                    throw new CertificateException( "The provided input should not contain multiple certificates with identical issuerDN values. Offending value: " + issuer );
-                }
-            }
-
-            // By subject
-            if ( bySubject.put( subject, certificate ) != null ) {
-                throw new CertificateException( "The provided input should not contain multiple certificates with identical subjectDN values. Offending value: " + subject );
-            }
+        for ( final X509Certificate certificate : certificates ) 
+        {
+        	if (certificate != null)
+        	{
+	            final Principal issuer = certificate.getIssuerDN();
+	            final Principal subject = certificate.getSubjectDN();
+	
+	            // By issuer
+	            if ( issuer.equals( subject ))
+	            {
+	                // self-signed: use null key.
+	                final X509Certificate sameIssuer = byIssuer.put( null, certificate );
+	                if ( sameIssuer != null )
+	                {
+	                    throw new CertificateException( "The provided input should not contain multiple root CA certificates. Issuer of first detected Root CA certificate: " + issuer + " Issuer of second detected Root CA certificate: : " + sameIssuer );
+	                }
+	            }
+	            else
+	            {
+	                // regular issuer
+	                if ( byIssuer.put( issuer, certificate ) != null )
+	                {
+	                    throw new CertificateException( "The provided input should not contain multiple certificates with identical issuerDN values. Offending value: " + issuer );
+	                }
+	            }
+	
+	            // By subject
+	            if ( bySubject.put( subject, certificate ) != null ) {
+	                throw new CertificateException( "The provided input should not contain multiple certificates with identical subjectDN values. Offending value: " + subject );
+	            }
+        	}
         }
 
         // The first certificate will have a 'subject' value that's not an 'issuer' of any other chain.
