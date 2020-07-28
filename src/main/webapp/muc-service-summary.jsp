@@ -164,8 +164,6 @@
         <th nowrap><fmt:message key="muc.service.summary.description" /></th>
         <th nowrap><fmt:message key="muc.service.summary.numrooms" /></th>
         <th nowrap><fmt:message key="muc.service.summary.numusers" /></th>
-        <th nowrap><fmt:message key="global.edit" /></th>
-        <th nowrap><fmt:message key="global.delete" /></th>
     </tr>
 </thead>
 <tbody>
@@ -195,26 +193,16 @@
             <%= i %>
         </td>
         <td width="23%">
-            <a href="muc-service-edit-form.jsp?mucname=<%= URLEncoder.encode(service.getServiceName(), "UTF-8") %>"><%= StringUtils.escapeHTMLTags(JID.unescapeNode(service.getServiceName())) %></a>
+            <a href="muc-room-summary.jsp?mucname=<%= URLEncoder.encode(service.getServiceDomain(), "UTF-8") %>"><%= StringUtils.escapeHTMLTags(JID.unescapeNode(service.getServiceDomain())) %></a>
         </td>
         <td width="33%">
             <%= StringUtils.escapeHTMLTags(service.getDescription()) %> &nbsp;
         </td>
         <td width="5%">
-            <a href="muc-room-summary.jsp?mucname==<%= URLEncoder.encode(service.getServiceName(), "UTF-8") %>"><%= service.getNumberChatRooms() %></a>
+            <a href="muc-room-summary.jsp?mucname=<%= URLEncoder.encode(service.getServiceDomain(), "UTF-8") %>"><%= service.getNumberChatRooms() %></a>
         </td>
         <td width="5%">
             <%= service.getNumberConnectedUsers(false) %>
-        </td>
-        <td width="1%" align="center">
-            <a href="muc-service-edit-form.jsp?mucname=<%= URLEncoder.encode(service.getServiceName(), "UTF-8") %>"
-             title="<fmt:message key="global.click_edit" />"
-             ><img src="images/edit-16x16.gif" width="16" height="16" border="0" alt="<fmt:message key="global.click_edit" />"></a>
-        </td>
-        <td width="1%" align="center" style="border-right:1px #ccc solid;">
-            <a href="muc-service-delete.jsp?mucname=<%= URLEncoder.encode(service.getServiceName(), "UTF-8") %>"
-             title="<fmt:message key="global.click_delete" />"
-             ><img src="images/delete-16x16.gif" width="16" height="16" border="0" alt="<fmt:message key="global.click_delete" />"></a>
         </td>
     </tr>
 

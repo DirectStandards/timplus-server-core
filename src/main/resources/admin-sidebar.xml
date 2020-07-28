@@ -526,11 +526,6 @@
                           url="muc-room-occupants.jsp"
                           description="${sidebar.muc-room-occupants.descr}"/>
 
-                    <!-- User Permissions -->
-                    <item id="muc-room-affiliations" name="${sidebar.muc-room-affiliations}"
-                          url="muc-room-affiliations.jsp"
-                          description="${sidebar.muc-room-affiliations.descr}"/>
-
                     <!-- Delete Room -->
                     <item id="muc-room-delete" name="${sidebar.muc-room-delete}"
                           url="muc-room-delete.jsp"
@@ -538,10 +533,6 @@
                 </sidebar>
             </item>
 
-            <!-- Create New Room -->
-            <item id="muc-room-create" name="${sidebar.muc-room-create}"
-                  url="muc-room-create.jsp"
-                  description="${sidebar.muc-room-create.descr}"/>
         </sidebar>
 
         <!-- Group Chat Settings -->
@@ -584,17 +575,9 @@
                           url="muc-tasks.jsp"
                           description="${sidebar.muc-tasks.descr}"/>
 
-                    <!-- Delete Service -->
-                    <item id="muc-service-delete" name="${sidebar.muc-service-delete}"
-                          url="muc-service-delete.jsp"
-                          description="${sidebar.muc-service-delete.descr}"/>
                 </sidebar>
             </item>
 
-            <!-- Create New MUC Service -->
-            <item id="muc-service-create" name="${sidebar.muc-service-create}"
-                  url="muc-service-create.jsp"
-                  description="${sidebar.muc-service-create.descr}"/>
         </sidebar>
     </tab>
 

@@ -342,6 +342,17 @@ public class MultiUserChatManager extends BasicModule implements ClusterEventLis
     }
     
     /**
+     * Retrieves a MultiUserChatService instance specified by it's service domain.
+     *
+     * @param servicdDomain The full service domain you wish to query.  This includes the group chat subdomain and the top level domain
+     * @return The MultiUserChatService instance associated with the serviceDomain, or null if none found.
+     */
+    public MultiUserChatService getMultiUserChatServiceByServiceDomain(String serviceDomain) 
+    {
+        return mucServices.get(serviceDomain);
+    }
+    
+    /**
      * Retrieves a MultiUserChatService instance specified by any JID that refers to it.
      * In other words, it can be a hostname for the service, a room JID, or even the JID
      * of a occupant of the room.  Basically it takes the hostname part of the JID,
@@ -388,6 +399,17 @@ public class MultiUserChatManager extends BasicModule implements ClusterEventLis
         return mucServices.containsKey(MultiUserChatManager.toFQDN(subdomain, domain));
     }
 
+    /**
+     * Returns true if a MUC service is configured/exists for a given service domain.
+     *
+     * @param serviceDomain The full service domain of the group chat.  This includes the group chat subdomain and the top level domain.
+     * @return True or false if the service domain is registered as a MUC service.
+     */
+    public boolean isServiceDomainRegistered(String serviceDomain) {
+        if (serviceDomain == null) return false;
+        return mucServices.containsKey(serviceDomain);
+    }
+    
     /**
      * Retrieves ID of MUC service by subdomain.
      *

@@ -77,7 +77,7 @@ import org.jivesoftware.util.crl.RevocationManager;
  */
 public class CRLRevocationManager implements RevocationManager 
 {
-	public static final String PROPERTY_CRL_FILE_CACHE_LOC = "xmpp.client.tls.crl.fileCahceLoc";
+	public static final String PROPERTY_CRL_FILE_CACHE_LOC = "xmpp.client.tls.crl.fileCacheLoc";
 	
 	public static final String PROPERTY_CRL_IGNORE_CLR_CHECKING = "xmpp.client.tls.crl.ignoreCLRChecking";
 	

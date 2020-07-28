@@ -34,25 +34,42 @@
     int start = ParamUtils.getIntParameter(request,"start",0);
     int range = ParamUtils.getIntParameter(request,"range",webManager.getRowsPerPage("muc-room-summary", 15));
     String mucname = ParamUtils.getParameter(request,"mucname");
-    String mucdomain = ParamUtils.getParameter(request,"mucdomain");
     String roomJIDStr = ParamUtils.getParameter(request,"roomJID");
     JID roomJID = null;
     if (roomJIDStr != null) roomJID = new JID(roomJIDStr);
 
+    System.out.println("Loading MUC chat summary");
+    System.out.println("\tMUC name: " + mucname);
+    System.out.println("\tRoom JID: " + roomJIDStr);
+    System.out.println("\r\n");
+    
     MultiUserChatService mucService = null;
-    if (roomJID != null) {
+    if (roomJID != null) 
+    {
+    	System.out.println("Loading mucService by room JID");
         mucService = webManager.getMultiUserChatManager().getMultiUserChatService(roomJID);
     }
-    else if (mucname != null && webManager.getMultiUserChatManager().isServiceRegistered(mucname, mucdomain)) {
-        mucService = webManager.getMultiUserChatManager().getMultiUserChatService(mucname, mucdomain);
+    else if (mucname != null && webManager.getMultiUserChatManager().isServiceDomainRegistered(mucname)) 
+    {
+    	System.out.println("Loading muc service domain");
+        mucService = webManager.getMultiUserChatManager().getMultiUserChatServiceByServiceDomain(mucname);
     }
-    else {
-        for (MultiUserChatService muc : webManager.getMultiUserChatManager().getMultiUserChatServices()) {
-            if (muc.isHidden()) {
+    else 
+    {
+    	System.out.println("Searching for MUC service to load from list of all muc services.");
+        for (MultiUserChatService muc : webManager.getMultiUserChatManager().getMultiUserChatServices()) 
+        {
+        	
+            if (muc.isHidden()) 
+            {
+            	System.out.println("MUC serviced " + muc.getServiceDomain() + " is hidden.  Skipping");
                 // Private and hidden, skip it.
                 continue;
             }
             mucService = muc;
+            
+            
+            System.out.println("Selected MUC serviced " + muc.getServiceDomain());
             break;
         }
     }
@@ -68,6 +85,8 @@
     }
 
     // Get the rooms in the server
+    System.out.println("Loading rooms is group chat service " + mucService.getDomain());
+    
     List<MUCRoom> rooms = mucService.getChatRooms();
     Collections.sort(rooms, new Comparator<MUCRoom>() {
         public int compare(MUCRoom room1, MUCRoom room2) {
@@ -91,7 +110,7 @@
 
 <p>
 <fmt:message key="muc.room.summary.info" />
-<a href="muc-service-edit-form.jsp?mucname=<%= URLEncoder.encode(mucService.getServiceName(), "UTF-8")%>"><%= StringUtils.escapeHTMLTags(mucService.getServiceDomain()) %></a>
+<%= StringUtils.escapeHTMLTags(mucService.getServiceDomain()) %>
 <fmt:message key="muc.room.summary.info2" />
 </p>
 
@@ -128,7 +147,7 @@
         continue;
     }
 %>
-    <option value="<%= StringUtils.escapeForXML(service.getServiceName()) %>"<%= mucService.getServiceName().equals(service.getServiceName()) ? " selected='selected'" : "" %>><%= StringUtils.escapeHTMLTags(service.getServiceDomain()) %></option>
+    <option value="<%= StringUtils.escapeForXML(service.getServiceDomain()) %>"<%= mucService.getServiceDomain().equals(service.getServiceDomain()) ? " selected='selected'" : "" %>><%= StringUtils.escapeHTMLTags(service.getServiceDomain()) %></option>
 <% } %>
     </select>
 <% } %>
