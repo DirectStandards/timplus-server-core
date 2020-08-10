@@ -7,6 +7,8 @@ import java.util.Map;
 import org.apache.commons.lang3.StringUtils;
 import org.jivesoftware.openfire.XMPPServer;
 import org.jivesoftware.openfire.muc.MultiUserChatManager;
+import org.jivesoftware.openfire.trustcircle.TrustCircle;
+import org.jivesoftware.openfire.trustcircle.TrustCircleManager;
 import org.jivesoftware.util.AlreadyExistsException;
 import org.jivesoftware.util.JiveGlobals;
 import org.jivesoftware.util.NotFoundException;
@@ -168,6 +170,19 @@ public class DomainManager
     	
     	domainName = domainName.toLowerCase();
     	
+    	// Delete all trust circle relationships
+    	try
+    	{
+    		for (TrustCircle circle: TrustCircleManager.getInstance().getCirclesByDomain(domainName, false, false))
+    		{
+    			TrustCircleManager.getInstance().deleteCirclesFromDomain(domainName, Collections.singletonList(circle.getName()));
+    		}
+    	}
+    	catch (Exception e)
+    	{
+    		
+    	}
+    	
     	final Domain domain = provider.getDomain(domainName);
     	
         provider.deleteDomain(domainName);
@@ -247,6 +262,16 @@ public class DomainManager
     public int getDomainCount() 
     {
         return provider.getDomainCount();
+    }
+    
+    public Collection<Domain> getDomainsByTrustCircle(String circleName)
+    {
+    	return provider.getDomainsByTrustCircle(circleName);
+    }
+    
+    public int getDomainCountInTrustCircle(String circleName)
+    {
+    	return provider.getDomainsByTrustCircle(circleName).size();
     }
     
     protected void createDomainServices(String domainName)

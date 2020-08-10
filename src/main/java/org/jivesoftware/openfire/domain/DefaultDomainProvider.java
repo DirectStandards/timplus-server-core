@@ -6,10 +6,13 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 
 import org.jivesoftware.database.DbConnectionManager;
+import org.jivesoftware.openfire.trustcircle.DefaultTrustCircleProvider;
+import org.jivesoftware.openfire.trustcircle.TrustCircle;
 import org.jivesoftware.util.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,6 +44,8 @@ public class DefaultDomainProvider implements DomainProvider
     private static final String DELETE_DOMAIN = "DELETE FROM ofDomain WHERE domainName=?";
     
     private static final String ENABLE_DOMAIN = "UPDATE ofDomain SET enabled=? WHERE domainName=?";   
+    
+	private static final String LOAD_CIRCLE_DOMAINS = "SELECT domainName FROM ofTrustCircleDomainReltn where trustCircleId = ?";	
     
 	@Override
 	public Domain getDomain(String domainName) throws DomainNotFoundException
@@ -288,6 +293,54 @@ public class DefaultDomainProvider implements DomainProvider
         {
             DbConnectionManager.closeConnection(pstmt, con);
         }
+	}
+	
+	public Collection<Domain> getDomainsByTrustCircle(String circleName)
+	{
+
+	   // Get the trust circle first
+	   TrustCircle circle = null;
+	   final DefaultTrustCircleProvider prov = new DefaultTrustCircleProvider();
+	   try
+	   {
+		   circle = prov.getTrustCircle(circleName, false, false);
+	   }
+	   catch (Exception e)
+	   {
+		   Log.error("Failed to get trust circle information.", e);
+		   return Collections.emptyList();
+	   }
+	   
+	   Connection con = null;
+	   PreparedStatement pstmt = null;
+	   ResultSet rs = null;
+	   try 
+	   {
+		   con = DbConnectionManager.getConnection();
+
+           pstmt = con.prepareStatement(LOAD_CIRCLE_DOMAINS);
+           pstmt.setString(1, circle.getId());
+            // Set the fetch size. This will prevent some JDBC drivers from trying
+            // to load the entire result set into memory.
+            DbConnectionManager.setFetchSize(pstmt, 500);
+            rs = pstmt.executeQuery();
+            final Collection<Domain> domains = new ArrayList<>();
+            while (rs.next()) 
+            {
+            	domains.add(this.getDomain(rs.getString(1)));
+            }
+            
+            return domains;
+	   }
+       catch (Exception e) 
+	   {
+		   Log.error("Failed to get domains for trust circle " + circleName, e);
+		   return Collections.emptyList();
+       }
+	   finally 
+	   {
+		   DbConnectionManager.closeConnection(rs, pstmt, con);
+	   }
 	}
 	
 	protected Domain domainFromResultSet(final ResultSet rs) throws SQLException

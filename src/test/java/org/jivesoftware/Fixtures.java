@@ -232,6 +232,13 @@ public final class Fixtures {
 			// TODO Auto-generated method stub
 			
 		}
+
+		@Override
+		public Collection<Domain> getDomainsByTrustCircle(String circleName)
+		{
+			// TODO Auto-generated method stub
+			return null;
+		}
  	
     }
     

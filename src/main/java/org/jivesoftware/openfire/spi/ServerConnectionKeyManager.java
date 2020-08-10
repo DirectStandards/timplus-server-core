@@ -2,20 +2,13 @@ package org.jivesoftware.openfire.spi;
 
 
 import java.lang.ref.Reference;
-import java.lang.ref.SoftReference;
 import java.net.Socket;
-import java.security.KeyStore;
 import java.security.Principal;
 import java.security.PrivateKey;
-import java.security.KeyStore.Builder;
-import java.security.KeyStore.Entry;
-import java.security.KeyStore.PrivateKeyEntry;
-import java.security.cert.Certificate;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Enumeration;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -26,7 +19,9 @@ import javax.net.ssl.X509ExtendedKeyManager;
 import javax.net.ssl.X509KeyManager;
 
 import org.apache.commons.lang3.StringUtils;
+import org.jivesoftware.openfire.certificate.CertificateManager;
 import org.jivesoftware.util.ReferenceIDUtil;
+import org.jivesoftware.util.cert.X509CertificateEx;
 
 /**
  * Custom TLS connection key manager that select certificates based on 
@@ -38,21 +33,18 @@ public class ServerConnectionKeyManager extends X509ExtendedKeyManager implement
 {
 	private static final int DNSName_TYPE = 2; // name type constant for Subject Alternative name domain name	
 	
-    private final List<Builder> builders;
+    private final CertificateManager mgr;
 	
-    private final Map<String,Reference<PrivateKeyEntry>> entryCacheMap;
+    private final Map<String,Reference<X509CertificateEx>> entryCacheMap;
 
-    public ServerConnectionKeyManager(Builder builder) 
+    public ServerConnectionKeyManager(CertificateManager mgr) 
     {
-        this(Collections.singletonList(builder));
-    }
-
-    public ServerConnectionKeyManager(List<Builder> builders) {
-        this.builders = builders;
-
+    	this.mgr = mgr;
+        
         entryCacheMap = Collections.synchronizedMap
-                        (new SizedMap<String,Reference<PrivateKeyEntry>>());
+                (new SizedMap<String,Reference<X509CertificateEx>>());
     }
+
 
     public String chooseEngineClientAlias(String[] keyType,
             Principal[] issuers, SSLEngine engine) 
@@ -67,6 +59,9 @@ public class ServerConnectionKeyManager extends X509ExtendedKeyManager implement
     	return null;
     }
     
+    /*
+     * This alias returned will be the certificate thumb print
+     */
     public String chooseEngineServerAlias(String keyType,
             Principal[] issuers, SSLEngine engine) 
     {
@@ -75,48 +70,20 @@ public class ServerConnectionKeyManager extends X509ExtendedKeyManager implement
     	if (StringUtils.isEmpty(referenceId))
     		return null;
     	
-    	for (int i = 0, n = builders.size(); i < n; i++)
-    	{
-    		final Builder builder = builders.get(i);
     		try
     		{
-    			final KeyStore ks = builder.getKeyStore();
+    			// get the possible certificates for the reference id
+    			Collection<org.jivesoftware.openfire.certificate.Certificate> certs =  mgr.getCertificatesByDomain(referenceId);
 
-	    		if (ks == null)
-	    			continue;
+	    		if (certs == null || certs.isEmpty())
+	    			return null;
 	    		
 		    	// find the certificates that matches the connection domain
-		    	for (Enumeration<String> e = ks.aliases(); e.hasMoreElements(); )
+		    	for (org.jivesoftware.openfire.certificate.Certificate checkCert :  certs)
 		    	{
-		    		final String alias = e.nextElement();
-		            if (ks.isKeyEntry(alias) == false) 
-		            {
-		                continue;
-		            }
+
 		            
-		            final Certificate[] chain = ks.getCertificateChain(alias);
-		            if ((chain == null) || (chain.length == 0)) 
-		            {
-		                // must be secret key entry, ignore
-		                continue;
-		            }
-		            
-		            boolean incompatible = false;
-		            for (Certificate cert : chain) 
-		            {
-		                if (cert instanceof X509Certificate == false) 
-		                {
-		                    // not an X509Certificate, ignore this alias
-		                    incompatible = true;
-		                    break;
-		                }
-		            }
-		            if (incompatible) 
-		            {
-		                continue;
-		            }
-		            
-		            final X509Certificate cert = (X509Certificate)chain[0];
+		            final X509Certificate cert = checkCert.asX509Certificate();
 		            
 		            if (!cert.getPublicKey().getAlgorithm().equals(keyType))
 		            	continue;
@@ -132,7 +99,7 @@ public class ServerConnectionKeyManager extends X509ExtendedKeyManager implement
 		                        String dnsName = (String)next.get(1);
 		                        if (referenceId.toLowerCase().equals(dnsName.toLowerCase())) 
 		                        {
-		                            return alias;
+		                            return checkCert.getThumbprint();
 		                        }
 		                    }
 		                }
@@ -143,7 +110,6 @@ public class ServerConnectionKeyManager extends X509ExtendedKeyManager implement
     		{
     			
     		}
-    	}
     	
     	return null;
     }
@@ -166,56 +132,27 @@ public class ServerConnectionKeyManager extends X509ExtendedKeyManager implement
 
         final List<String> results = new ArrayList<>();
 
-        for (int i = 0, n = builders.size(); i < n; i++) 
-        {
+
             try 
             {
-            	final KeyStore ks = builders.get(i).getKeyStore();
+            
 		    	// find the certificates that matches the connection domain
-		    	for (Enumeration<String> e = ks.aliases(); e.hasMoreElements(); )
+		    	for (org.jivesoftware.openfire.certificate.Certificate checkCert : mgr.getCertificates())
 		    	{
-		    		final String alias = e.nextElement();
-		            if (ks.isKeyEntry(alias) == false) 
-		            {
-		                continue;
-		            }
 		            
-		            final Certificate[] chain = ks.getCertificateChain(alias);
-		            if ((chain == null) || (chain.length == 0)) 
-		            {
-		                // must be secret key entry, ignore
-		                continue;
-		            }
-		            
-		            boolean incompatible = false;
-		            for (Certificate cert : chain) 
-		            {
-		                if (cert instanceof X509Certificate == false) 
-		                {
-		                    // not an X509Certificate, ignore this alias
-		                    incompatible = true;
-		                    break;
-		                }
-		            }
-		            if (incompatible) 
-		            {
-		                continue;
-		            }
-		            
-		            final X509Certificate cert = (X509Certificate)chain[0];
+		            final X509Certificate cert = (X509Certificate)checkCert.asX509Certificate();
 		            
 		            if (!cert.getPublicKey().getAlgorithm().equals(keyType))
 		            	continue;            	
             	
 
-		            results.add(alias);
+		            results.add(checkCert.getThumbprint());
                 }
             } 
             catch (Exception e) 
             {
                 // ignore
             }
-        }
 
         return results.toArray(new String[results.size()]);
 	}
@@ -243,55 +180,48 @@ public class ServerConnectionKeyManager extends X509ExtendedKeyManager implement
 	@Override
 	public X509Certificate[] getCertificateChain(String alias)
 	{
-        PrivateKeyEntry entry = getEntry(alias);
-        return entry == null ? null :
-                (X509Certificate[])entry.getCertificateChain();
+		X509CertificateEx entry = getEntry(alias);
+        return entry == null ? null : new X509Certificate[] {entry};
 	}
 
 	@Override
 	public PrivateKey getPrivateKey(String alias)
 	{
-        PrivateKeyEntry entry = getEntry(alias);
+		X509CertificateEx entry = getEntry(alias);
         return entry == null ? null : entry.getPrivateKey();
 	}
 
-    private PrivateKeyEntry getEntry(String alias) {
+    private X509CertificateEx getEntry(String thumbprint) {
         // if the alias is null, return immediately
-        if (alias == null) {
+        if (StringUtils.isEmpty(thumbprint)) {
             return null;
         }
 
         // try to get the entry from cache
-        Reference<PrivateKeyEntry> ref = entryCacheMap.get(alias);
-        PrivateKeyEntry entry = (ref != null) ? ref.get() : null;
+        Reference<X509CertificateEx> ref = entryCacheMap.get(thumbprint);
+        X509CertificateEx entry = (ref != null) ? ref.get() : null;
         if (entry != null) {
             return entry;
         }
 
-        for (int i = 0, n = builders.size(); i < n; i++) 
+
+        try 
         {
-            try 
-            {
-            	final KeyStore ks = builders.get(i).getKeyStore();
+        	final org.jivesoftware.openfire.certificate.Certificate checkCert = 
+        			mgr.getCertificateByThumbprint(thumbprint);
 
-            	final Builder builder = builders.get(i);
+        	final X509Certificate cert = checkCert.asX509Certificate();
+        	
 
-            	Entry newEntry = ks.getEntry
-            			(alias, builder.getProtectionParameter(alias));
-	            if (newEntry instanceof PrivateKeyEntry == false) 
-	            {
-	                // unexpected type of entry
-	                continue;
-	            }
-	            entry = (PrivateKeyEntry)newEntry;
-	            entryCacheMap.put(alias, new SoftReference<PrivateKeyEntry>(entry));
-	            return entry;
-            }
-            catch (Exception e) 
+            if (cert instanceof X509CertificateEx) 
             {
+                return (X509CertificateEx)cert;
             }
         }
-        
+        catch (Exception e) 
+        {
+        }
+                
         return null;
     }
 }

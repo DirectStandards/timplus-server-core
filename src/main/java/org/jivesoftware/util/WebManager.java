@@ -44,6 +44,7 @@ import org.jivesoftware.openfire.pubsub.PubSubInfo;
 import org.jivesoftware.openfire.pubsub.PubSubServiceInfo;
 import org.jivesoftware.openfire.roster.RosterManager;
 import org.jivesoftware.openfire.security.SecurityAuditManager;
+import org.jivesoftware.openfire.trustcircle.TrustCircleManager;
 import org.jivesoftware.openfire.user.User;
 import org.jivesoftware.openfire.user.UserManager;
 import org.jivesoftware.openfire.vcard.VCardManager;
@@ -110,6 +111,10 @@ public class WebManager extends WebBean {
 
     public VCardManager getVCardManager() {
         return getXMPPServer().getVCardManager();
+    }
+    
+    public TrustCircleManager getTrustCircleManager() {
+        return TrustCircleManager.getInstance();
     }
     
     public DomainManager getDomainManager() {

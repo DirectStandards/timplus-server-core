@@ -21,4 +21,6 @@ public interface DomainProvider
 	public void deleteDomain(String domainName);
 	
 	public void enableDomain(String domainName, boolean enable) throws DomainNotFoundException;
+	
+	public Collection<Domain> getDomainsByTrustCircle(String circleName);
 }

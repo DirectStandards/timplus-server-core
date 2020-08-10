@@ -4,7 +4,9 @@ import org.apache.mina.core.session.IoSession;
 import org.apache.mina.filter.ssl.SslFilter;
 import org.eclipse.jetty.util.ssl.SslContextFactory;
 import org.jivesoftware.openfire.Connection;
+import org.jivesoftware.openfire.certificate.CertificateManager;
 import org.jivesoftware.openfire.keystore.OpenfireX509TrustManager;
+import org.jivesoftware.openfire.trustcircle.TrustCircleManager;
 import org.jivesoftware.util.ReferenceIDUtil;
 import org.jivesoftware.util.SystemProperty;
 import org.slf4j.Logger;
@@ -74,9 +76,7 @@ public class EncryptionArtifactFactory
     {
         try
         {
-            final Builder builder = Builder.newInstance(configuration.getIdentityStore().getStore(),
-                    new PasswordProtection(configuration.getIdentityStoreConfiguration().getPassword()));
-            return new KeyManager[] {new ServerConnectionKeyManager(builder)};
+            return new KeyManager[] {new ServerConnectionKeyManager(CertificateManager.getInstance())};
         }
         catch ( Exception ex )
         {
@@ -102,8 +102,8 @@ public class EncryptionArtifactFactory
         try
         {
             Log.debug( "Attempting to instantiate '{}' using the three-argument constructor that is properietary to Openfire.", trustManagerClass );
-            final Constructor<TrustManager> constructor = trustManagerClass.getConstructor( KeyStore.class, Boolean.TYPE, Boolean.TYPE);
-            final TrustManager trustManager = constructor.newInstance( configuration.getTrustStore().getStore(), configuration.isAcceptSelfSignedCertificates(), configuration.isVerifyCertificateValidity() );
+            final Constructor<TrustManager> constructor = trustManagerClass.getConstructor( TrustCircleManager.class, Boolean.TYPE, Boolean.TYPE);
+            final TrustManager trustManager = constructor.newInstance( TrustCircleManager.getInstance(), configuration.isAcceptSelfSignedCertificates(), configuration.isVerifyCertificateValidity() );
             Log.debug( "Successfully instantiated '{}'.", trustManagerClass );
             return new TrustManager[] { trustManager };
         }
@@ -120,7 +120,7 @@ public class EncryptionArtifactFactory
             catch ( InstantiationException | IllegalAccessException ex )
             {
                 Log.warn( "Unable to instantiate an instance of the configured Trust Manager implementation '{}'. Using {} instead.", trustManagerClass, OpenfireX509TrustManager.class, ex );
-                return new TrustManager[] { new OpenfireX509TrustManager( configuration.getTrustStore().getStore(), configuration.isAcceptSelfSignedCertificates(), configuration.isVerifyCertificateValidity() )};
+                return new TrustManager[] { new OpenfireX509TrustManager( TrustCircleManager.getInstance(), configuration.isAcceptSelfSignedCertificates(), configuration.isVerifyCertificateValidity() )};
             }
         }
     }
@@ -157,11 +157,16 @@ public class EncryptionArtifactFactory
      * @throws KeyStoreException if there was a problem accessing the keystore
      * @throws UnrecoverableKeyException if the key could not be recovered
      */
-    public synchronized SSLContext getSSLContext() throws NoSuchAlgorithmException, KeyManagementException, KeyStoreException, UnrecoverableKeyException
+    public synchronized SSLContextBlock getSSLContext() throws NoSuchAlgorithmException, KeyManagementException, KeyStoreException, UnrecoverableKeyException
     {
         final SSLContext sslContext = getUninitializedSSLContext();
-        sslContext.init( getKeyManagers(), getTrustManagers(), new SecureRandom() );
-        return sslContext;
+        final KeyManager[] keyManagers = getKeyManagers();
+        final TrustManager[] trustManagers = getTrustManagers();
+        
+        sslContext.init( keyManagers, trustManagers, new SecureRandom() );
+        
+        
+        return new SSLContextBlock(sslContext, keyManagers, trustManagers);
     }
 
     /**
@@ -175,10 +180,19 @@ public class EncryptionArtifactFactory
      */
     private SSLEngine createSSLEngine() throws UnrecoverableKeyException, NoSuchAlgorithmException, KeyStoreException, KeyManagementException
     {
-        final SSLContext sslContext = getSSLContext();
+        final SSLContextBlock sslContextBlock = getSSLContext();
 
-        final SSLEngine sslEngine = sslContext.createSSLEngine();
+        final SSLEngine sslEngine = sslContextBlock.getContext().createSSLEngine();
 
+        for (TrustManager mgr : sslContextBlock.getTrustManagers())
+        {
+        	if (mgr instanceof OpenfireX509TrustManager)
+        	{
+        		final OpenfireX509TrustManager trsManager = OpenfireX509TrustManager.class.cast(mgr);
+        		trsManager.setSSLEngine(sslEngine);
+        	}
+        }
+        
         // Configure protocol support.
         final Set<String> protocols = configuration.getEncryptionProtocols();
         if ( !protocols.isEmpty() )
@@ -332,10 +346,10 @@ public class EncryptionArtifactFactory
      */
     public SslFilter createServerModeSslFilter() throws KeyManagementException, NoSuchAlgorithmException, KeyStoreException, UnrecoverableKeyException
     {
-        final SSLContext sslContext = getSSLContext();
+    	final SSLContextBlock sslContextBlock = getSSLContext();
         final SSLEngine sslEngine = createServerModeSSLEngine();
 
-        return createSslFilter( sslContext, sslEngine );
+        return createSslFilter( sslContextBlock.getContext(), sslEngine );
     }
 
     /**
@@ -354,10 +368,10 @@ public class EncryptionArtifactFactory
      */
     public SslFilter createClientModeSslFilter() throws KeyManagementException, NoSuchAlgorithmException, KeyStoreException, UnrecoverableKeyException
     {
-        final SSLContext sslContext = getSSLContext();
+        final SSLContextBlock sslContextBlock = getSSLContext();
         final SSLEngine sslEngine = createClientModeSSLEngine();
 
-        return createSslFilter( sslContext, sslEngine );
+        return createSslFilter( sslContextBlock.getContext(), sslEngine );
     }
 
     /**
@@ -476,4 +490,32 @@ public class EncryptionArtifactFactory
         return Arrays.asList( context.createSSLEngine().getEnabledCipherSuites() );
     }
 
+    protected static class SSLContextBlock
+    {
+    	protected final SSLContext context;
+    	protected final KeyManager[] keyManagers;
+    	protected final TrustManager[] trustManagers;
+    	
+    	public SSLContextBlock(SSLContext context, KeyManager[] keyManagers, TrustManager[] trustManagers)
+    	{
+    		this.context = context;
+    		this.keyManagers = keyManagers;
+    		this.trustManagers = trustManagers;
+    	}
+
+		public SSLContext getContext()
+		{
+			return context;
+		}
+
+		public KeyManager[] getKeyManagers()
+		{
+			return keyManagers;
+		}
+
+		public TrustManager[] getTrustManagers()
+		{
+			return trustManagers;
+		}
+    }
 }

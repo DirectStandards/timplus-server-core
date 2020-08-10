@@ -1,6 +1,11 @@
 package org.jivesoftware.openfire.keystore;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
+import org.jivesoftware.openfire.trustbundle.TrustBundle;
+import org.jivesoftware.openfire.trustbundle.TrustBundleAnchor;
+import org.jivesoftware.openfire.trustcircle.TrustCircle;
+import org.jivesoftware.openfire.trustcircle.TrustCircleManager;
+import org.jivesoftware.util.ReferenceIDUtil;
 import org.jivesoftware.util.crl.impl.CRLRevocationManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -8,7 +13,6 @@ import org.slf4j.LoggerFactory;
 import javax.net.ssl.*;
 import java.security.*;
 import java.security.cert.*;
-import java.security.cert.Certificate;
 import java.util.*;
 
 /**
@@ -17,13 +21,14 @@ import java.util.*;
  * @author Guus der Kinderen, guus.der.kinderen@gmail.com
  */
 // TODO re-enable optional OCSP checking.
-// TODO re-enable CRL checking.
 public class OpenfireX509TrustManager implements X509TrustManager
 {
     private static final Logger Log = LoggerFactory.getLogger( OpenfireX509TrustManager.class );
 
     private static final Provider PROVIDER = new BouncyCastleProvider();
-
+    
+    private SSLEngine engine;
+    
     static
     {
         // Add the BC provider to the list of security providers
@@ -41,39 +46,22 @@ public class OpenfireX509TrustManager implements X509TrustManager
      */
     private final boolean checkValidity;
 
-    /**
-     * The set of trusted issuers from the trust store. Note that these certificates are not validated. It is assumed
-     * that this set can be long-lived. Time-based validation should occur close to the actual usage / invocation.
-     */
-    protected final Set<X509Certificate> trustedIssuers;
-
-    public OpenfireX509TrustManager( KeyStore trustStore, boolean acceptSelfSigned, boolean checkValidity ) throws NoSuchAlgorithmException, KeyStoreException
+    protected TrustCircleManager circleManager;
+    
+    public OpenfireX509TrustManager( TrustCircleManager circleManager, boolean acceptSelfSigned, boolean checkValidity ) throws NoSuchAlgorithmException, KeyStoreException
     {
+    	this.circleManager = circleManager;
         this.acceptSelfSigned = acceptSelfSigned;
         this.checkValidity = checkValidity;
 
-        // Retrieve all trusted certificates from the store, but don't validate them just yet!
-        final Set<X509Certificate> trusted = new HashSet<>();
-
-        final Enumeration<String> aliases = trustStore.aliases();
-        while ( aliases.hasMoreElements() )
-        {
-            final String alias = aliases.nextElement();
-            if ( trustStore.isCertificateEntry( alias ) )
-            {
-                final Certificate certificate = trustStore.getCertificate( alias );
-                if ( certificate instanceof X509Certificate )
-                {
-                    trusted.add( (X509Certificate) certificate );
-                }
-            }
-        }
-
-        trustedIssuers = Collections.unmodifiableSet( trusted );
-
-        Log.debug( "Constructed trust manager. Number of trusted issuers: {}, accepts self-signed: {}, checks validity: {}", trustedIssuers.size(), acceptSelfSigned, checkValidity );
+        Log.debug( "Constructed trust manager. Accepts self-signed: {}, checks validity: {}", acceptSelfSigned, checkValidity );
     }
 
+    public void setSSLEngine(SSLEngine engine)
+    {
+    	this.engine = engine;
+    }
+    
     @Override
     public void checkClientTrusted( X509Certificate[] chain, String authType ) throws CertificateException
     {
@@ -113,17 +101,47 @@ public class OpenfireX509TrustManager implements X509TrustManager
     @Override
     public X509Certificate[] getAcceptedIssuers()
     {
-        final Set<X509Certificate> result;
-        if ( checkValidity )
-        {
-            // Filter the set of issuers to see what certificates are currently valid. Note that this might result in a
-            // different result as compared with the last verification.
-            result = CertificateUtils.filterValid( this.trustedIssuers );
-        }
-        else
-        {
-            result = this.trustedIssuers;
-        }
+    	final Set<X509Certificate> result = new HashSet<>();
+    	
+    	Collection<TrustCircle> circles = null;
+    	
+		// make sure we have a reference id so we no what domain connection is being requested
+		final String referenceId = ReferenceIDUtil.getSessionReferenceId(engine.getSession());
+    	try
+    	{
+			if (referenceId != null)
+	    	{
+	    		
+	    		circles = circleManager.getCirclesByDomain(referenceId, true, true);
+	    	}
+	    	else
+	    	{
+	    		// fall back 
+	    		circles = circleManager.getTrustCircles(true, true);
+	
+	    	}
+    	}
+    	catch (Exception e)
+    	{
+    		Log.warn("Could not get trust anchors for trust validation.");
+    	}
+    	
+    	if (circles == null || circles.isEmpty())
+    		return new X509Certificate[] {};
+    	
+    	for (TrustCircle circle : circles)
+    	{
+    		for (TrustBundle bundle : circle.getTrustBundles())
+    			for (TrustBundleAnchor anchor : bundle.getTrustBundleAnchors())
+    				if (checkValidity)
+    					result.addAll(CertificateUtils.filterValid( anchor.asX509Certificate()));
+    						
+			for (org.jivesoftware.openfire.trustanchor.TrustAnchor anchor : circle.getAnchors())
+				if (checkValidity)
+					result.addAll(CertificateUtils.filterValid( anchor.asX509Certificate()));	
+    		
+    	}
+    	
         return result.toArray( new X509Certificate[ result.size() ] );
     }
 
@@ -185,7 +203,7 @@ public class OpenfireX509TrustManager implements X509TrustManager
 		{
 			throw new IllegalArgumentException( "Could not get end entity certificate from chain.");
 		}
-        
+		
 		final Set<X509Certificate> acceptedServerCerts = CertificateUtils.filterValid( endEntityCert );
         if (acceptedServerCerts.size() <= 0)
         {
@@ -222,7 +240,7 @@ public class OpenfireX509TrustManager implements X509TrustManager
         
         // The set of trusted issuers (for this invocation), based on the issuers from the truststore.
         final Set<X509Certificate> trustedIssuers = new HashSet<>();
-        trustedIssuers.addAll( this.trustedIssuers );
+        trustedIssuers.addAll( Arrays.asList(getAcceptedIssuers() ));
 
         // When accepting self-signed certificates, and the chain is a self-signed certificate, add it to the collection
         // of trusted issuers. Blindly accepting this issuer is undesirable, as that would circumvent other checks, such
