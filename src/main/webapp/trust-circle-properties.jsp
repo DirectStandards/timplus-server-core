@@ -253,10 +253,10 @@
     <fmt:message key="trustcircle.properties.info"/>
 </p>
 
-<form action="trust-circle-properties.jsp?circleName=${circleName}" onsubmit="selectAllOptions('bundlesAssociated') && selectAllOptions('anchorsAssociated')" method="post">
+<form action="trust-circle-properties.jsp" onsubmit="selectAllOptions('bundlesAssociated') && selectAllOptions('anchorsAssociated')" method="post">
     <input type="hidden" name="csrf" value="${csrf}">
     <input type="hidden" name="update" value="true" />
-
+    <input type="hidden" name="circleName" value="<%= StringUtils.escapeForXML(circleName) %>">
     <!--  Trust Bundle Selection -->
     <fmt:message key="trustcircle.properties.trustbundles.boxtitle" var="associatedbundlesboxtitle"/>
     <admin:contentBox title="${associatedbundlesboxtitle}">
