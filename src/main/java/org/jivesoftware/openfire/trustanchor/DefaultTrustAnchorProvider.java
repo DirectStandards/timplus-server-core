@@ -12,10 +12,9 @@ import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
+import org.directtruststandards.timplus.common.cert.CertUtils;
+import org.directtruststandards.timplus.common.cert.Thumbprint;
 import org.jivesoftware.database.DbConnectionManager;
-import org.jivesoftware.util.cert.CertUtils;
-import org.jivesoftware.util.cert.Thumbprint;
-
 
 public class DefaultTrustAnchorProvider implements TrustAnchorProvider
 {	

@@ -27,12 +27,12 @@ import org.bouncycastle.cms.CMSProcessableByteArray;
 import org.bouncycastle.cms.CMSSignedData;
 import org.bouncycastle.cms.SignerInformation;
 import org.bouncycastle.cms.jcajce.JcaSimpleSignerInfoVerifierBuilder;
+import org.directtruststandards.timplus.common.cert.Thumbprint;
 import org.jivesoftware.openfire.trustbundle.BundleRefreshError;
 import org.jivesoftware.openfire.trustbundle.TrustBundle;
 import org.jivesoftware.openfire.trustbundle.TrustBundleAnchor;
 import org.jivesoftware.openfire.trustbundle.TrustBundleManager;
 import org.jivesoftware.util.JiveGlobals;
-import org.jivesoftware.util.cert.Thumbprint;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

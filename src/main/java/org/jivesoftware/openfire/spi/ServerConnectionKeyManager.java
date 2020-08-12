@@ -19,9 +19,15 @@ import javax.net.ssl.X509ExtendedKeyManager;
 import javax.net.ssl.X509KeyManager;
 
 import org.apache.commons.lang3.StringUtils;
+import org.directtruststandards.timplus.common.cert.CertStoreUtils;
+import org.directtruststandards.timplus.common.cert.X509CertificateEx;
+import org.directtruststandards.timplus.common.crypto.KeyStoreProtectionManager;
+import org.jivesoftware.openfire.XMPPServer;
 import org.jivesoftware.openfire.certificate.CertificateManager;
+import org.jivesoftware.openfire.domain.DomainManager;
 import org.jivesoftware.util.ReferenceIDUtil;
-import org.jivesoftware.util.cert.X509CertificateEx;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Custom TLS connection key manager that select certificates based on 
@@ -31,6 +37,8 @@ import org.jivesoftware.util.cert.X509CertificateEx;
  */
 public class ServerConnectionKeyManager extends X509ExtendedKeyManager implements X509KeyManager
 {
+	private static final Logger Log = LoggerFactory.getLogger(DomainManager.class);	
+	
 	private static final int DNSName_TYPE = 2; // name type constant for Subject Alternative name domain name	
 	
     private final CertificateManager mgr;
@@ -40,7 +48,7 @@ public class ServerConnectionKeyManager extends X509ExtendedKeyManager implement
     public ServerConnectionKeyManager(CertificateManager mgr) 
     {
     	this.mgr = mgr;
-        
+    	
         entryCacheMap = Collections.synchronizedMap
                 (new SizedMap<String,Reference<X509CertificateEx>>());
     }
@@ -108,8 +116,13 @@ public class ServerConnectionKeyManager extends X509ExtendedKeyManager implement
     		}
     		catch (Exception e)
     		{
-    			
+    			Log.warn("Could not get a certificate for reference id " + referenceId, e);
     		}
+    	
+    	if (StringUtils.isEmpty(referenceId))
+    		Log.warn("Can not lookup a certificate for an empty reference id");
+    	else
+    		Log.warn("Could not get a certificate for reference id " + referenceId);
     	
     	return null;
     }
@@ -191,10 +204,13 @@ public class ServerConnectionKeyManager extends X509ExtendedKeyManager implement
         return entry == null ? null : entry.getPrivateKey();
 	}
 
-    private X509CertificateEx getEntry(String thumbprint) {
+    private X509CertificateEx getEntry(String thumbprint) 
+    {
         // if the alias is null, return immediately
-        if (StringUtils.isEmpty(thumbprint)) {
-            return null;
+        if (StringUtils.isEmpty(thumbprint)) 
+        {
+        	Log.warn("Cannot get a certificate entry for an empty thumbprint");
+        	return null;
         }
 
         // try to get the entry from cache
@@ -210,7 +226,7 @@ public class ServerConnectionKeyManager extends X509ExtendedKeyManager implement
         	final org.jivesoftware.openfire.certificate.Certificate checkCert = 
         			mgr.getCertificateByThumbprint(thumbprint);
 
-        	final X509Certificate cert = checkCert.asX509Certificate();
+        	final X509Certificate cert = CertStoreUtils.certFromData(XMPPServer.getInstance().getKeyStoreProtectionManager(), checkCert.getCertData());
         	
 
             if (cert instanceof X509CertificateEx) 
@@ -220,8 +236,11 @@ public class ServerConnectionKeyManager extends X509ExtendedKeyManager implement
         }
         catch (Exception e) 
         {
+        	Log.warn("Error trying to retrive a certrificate for thumprint " + thumbprint, e);
         }
-                
+            
+        Log.warn("Could not get a certificate entry for thumbprint " + thumbprint);
+        
         return null;
     }
 }

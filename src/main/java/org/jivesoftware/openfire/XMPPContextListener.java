@@ -36,7 +36,7 @@ public class XMPPContextListener implements ServletContextListener {
             // Running in standalone mode so do nothing
             return;
         }
-        XMPPServer server = new XMPPServer();
+        XMPPServer server = new XMPPServer(null);
         event.getServletContext().setAttribute(XMPP_KEY, server);
     }
 

@@ -3,8 +3,8 @@ package org.jivesoftware.openfire.certificate;
 import java.security.cert.X509Certificate;
 import java.time.Instant;
 
-import org.jivesoftware.util.cert.CertUtils;
-import org.jivesoftware.util.cert.Thumbprint;
+import org.directtruststandards.timplus.common.cert.CertStoreUtils;
+import org.directtruststandards.timplus.common.cert.Thumbprint;
 
 public class Certificate
 {
@@ -140,7 +140,7 @@ public class Certificate
     	if (certData == null)
     		throw new IllegalArgumentException("Cert data cannot be null");
     	
-    	X509Certificate cert = CertUtils.toCertContainer(certData).getCert();
+    	X509Certificate cert = CertStoreUtils.toCertContainer(certData).getCert();
         setThumbprint(Thumbprint.toThumbprint(cert).toString());
         setThumbprintAllCaps(Thumbprint.toThumbprint(cert).toString().toUpperCase());
         setValidEndDate(cert.getNotAfter().toInstant());
@@ -152,7 +152,7 @@ public class Certificate
     
     public X509Certificate asX509Certificate()
     {
-    	return CertUtils.toX509Certificate(certData);
+    	return CertStoreUtils.toCertContainer(certData).getCert();
     }
      
 }

@@ -51,6 +51,7 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
+import org.directtruststandards.timplus.common.crypto.KeyStoreProtectionManager;
 import org.dom4j.Document;
 import org.dom4j.io.SAXReader;
 import org.jivesoftware.database.DbConnectionManager;
@@ -224,7 +225,8 @@ public class XMPPServer {
     private PluginManager pluginManager;
     private InternalComponentManager componentManager;
     private RemoteSessionLocator remoteSessionLocator;
-
+    private KeyStoreProtectionManager keyStoreManager;
+    
     /**
      * True if in setup mode
      */
@@ -260,15 +262,22 @@ public class XMPPServer {
     /**
      * Creates a server and starts it.
      */
-    public XMPPServer() {
+    public XMPPServer(KeyStoreProtectionManager keyStoreManager) 
+    {
         // We may only have one instance of the server running on the JVM
         if (instance != null) {
             throw new IllegalStateException("A server is already running");
         }
         instance = this;
+        this.keyStoreManager = keyStoreManager;
         start();
     }
 
+    public KeyStoreProtectionManager getKeyStoreProtectionManager()
+    {
+    	return keyStoreManager;
+    }
+    
     /**
      * Returns a snapshot of the server's status.
      *

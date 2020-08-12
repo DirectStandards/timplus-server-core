@@ -14,8 +14,8 @@ import java.util.List;
 import java.util.UUID;
 
 import org.apache.commons.lang3.StringUtils;
+import org.directtruststandards.timplus.common.cert.CertUtils;
 import org.jivesoftware.database.DbConnectionManager;
-import org.jivesoftware.util.cert.CertUtils;
 
 public class DefaultTrustBundleProvider implements TrustBundleProvider
 {

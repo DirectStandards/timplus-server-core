@@ -22,13 +22,15 @@ import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.PBEKeySpec;
 
 import org.apache.commons.io.IOUtils;
+import org.directtruststandards.timplus.common.cert.CertStoreUtils;
+import org.directtruststandards.timplus.common.cert.CertStoreUtils.CertContainer;
+import org.directtruststandards.timplus.common.cert.CertUtils;
+import org.directtruststandards.timplus.common.crypto.KeyStoreProtectionManager;
+import org.directtruststandards.timplus.common.crypto.WrappableKeyProtectionManager;
+import org.jivesoftware.openfire.XMPPServer;
 import org.jivesoftware.util.PrivateKeyType;
 import org.jivesoftware.util.SystemProperty;
 import org.jivesoftware.util.SystemProperty.Builder;
-import org.jivesoftware.util.cert.CertUtils;
-import org.jivesoftware.util.cert.CertUtils.CertContainer;
-import org.jivesoftware.util.crypto.KeyStoreProtectionManager;
-import org.jivesoftware.util.crypto.WrappableKeyProtectionManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,8 +42,6 @@ public class CertificateManager
 	@SuppressWarnings("rawtypes")
 	public static final SystemProperty<Class> CERTIFICATE_PROVIDER;
 	private static CertificateProvider provider;
-	
-	private WrappableKeyProtectionManager keyManager;
 	
 	static
 	{
@@ -188,7 +188,11 @@ public class CertificateManager
 			if (privKeyType == PrivateKeyType.NONE)
 				return certOrP12Bytes;
 			
-			final CertContainer cont =  CertUtils.toCertContainer(certOrP12Bytes);
+			final CertContainer cont =  CertStoreUtils.toCertContainer(certOrP12Bytes);
+			
+			WrappableKeyProtectionManager keyManager = null;
+			if (XMPPServer.getInstance().getKeyStoreProtectionManager() != null && XMPPServer.getInstance().getKeyStoreProtectionManager() instanceof WrappableKeyProtectionManager)
+				keyManager = WrappableKeyProtectionManager.class.cast(XMPPServer.getInstance().getKeyStoreProtectionManager());
 			
 			// if this is a PKCS12 format, then either return the bytes as is, or if there is keystore manager, wrap the private keys
 			if (privKeyType == PrivateKeyType.PKCS_12_PASSPHRASE | privKeyType == PrivateKeyType.PKCS_12_UNPROTECTED)
@@ -197,7 +201,7 @@ public class CertificateManager
 				
 				// if there is no keystore manager, we can't wrap the keys, so we'll just send them over the wire
 				// as PKCS12 file
-				if (this.keyManager == null)
+				if (keyManager == null)
 				{
 					return certOrP12Bytes;
 				}
@@ -205,11 +209,11 @@ public class CertificateManager
 				{
 
 					// now wrap the private key
-					final byte[] wrappedKey = this.keyManager.wrapWithSecretKey((SecretKey)((KeyStoreProtectionManager)keyManager).getPrivateKeyProtectionKey(), 
+					final byte[] wrappedKey = keyManager.wrapWithSecretKey((SecretKey)((KeyStoreProtectionManager)keyManager).getPrivateKeyProtectionKey(), 
 							cont.getKey());
 					
 					// return the wrapped key format
-					return CertUtils.certAndWrappedKeyToRawByteFormat(wrappedKey, cont.getCert());
+					return CertStoreUtils.certAndWrappedKeyToRawByteFormat(wrappedKey, cont.getCert());
 				}
 			}
 			
@@ -221,7 +225,7 @@ public class CertificateManager
 				// cert and wrapped key format
 				if (privKeyType == PrivateKeyType.PKCS8_WRAPPED)
 				{
-					return CertUtils.certAndWrappedKeyToRawByteFormat(privateKeyBytes, cont.getCert());
+					return CertStoreUtils.certAndWrappedKeyToRawByteFormat(privateKeyBytes, cont.getCert());
 				}
 				
 				// get a private key object, the private key is normalized at this point into an unencrypted format
@@ -230,7 +234,7 @@ public class CertificateManager
 				final Key privKey = kf.generatePrivate (keysp);
 				
 	
-				if (this.keyManager == null)
+				if (keyManager == null)
 				{
 					
 					// if there is no keystore manager, we can't wrap the keys, so we'll just send them over the wire
@@ -239,24 +243,20 @@ public class CertificateManager
 					localKeyStore.load(null, null);
 					
 					localKeyStore.setKeyEntry("privCert", privKey, "".toCharArray(),  new java.security.cert.Certificate[] {cont.getCert()});
-					final ByteArrayOutputStream outStr = new ByteArrayOutputStream();
-					localKeyStore.store(outStr, "".toCharArray());		
-					
-					try
+						
+					try (final ByteArrayOutputStream outStr = new ByteArrayOutputStream())
 					{
+						
+						localKeyStore.store(outStr, "".toCharArray());	
 						return outStr.toByteArray();
-					}
-					finally
-					{
-						IOUtils.closeQuietly(outStr);
 					}
 				}		
 				else
 				{
 					// wrap the key and turn the stream in the wrapped key format
-					final byte[] wrappedKey = this.keyManager.wrapWithSecretKey((SecretKey)((KeyStoreProtectionManager)keyManager).getPrivateKeyProtectionKey(), 
+					final byte[] wrappedKey = keyManager.wrapWithSecretKey((SecretKey)((KeyStoreProtectionManager)keyManager).getPrivateKeyProtectionKey(), 
 							privKey);
-					return CertUtils.certAndWrappedKeyToRawByteFormat(wrappedKey, cont.getCert());
+					return CertStoreUtils.certAndWrappedKeyToRawByteFormat(wrappedKey, cont.getCert());
 				}
 			}
 		}

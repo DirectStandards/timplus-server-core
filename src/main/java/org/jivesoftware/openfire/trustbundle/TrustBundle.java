@@ -9,7 +9,7 @@ import java.util.Collection;
 import java.util.Collections;
 
 import org.apache.commons.io.IOUtils;
-import org.jivesoftware.util.cert.CertificateConversionException;
+import org.directtruststandards.timplus.common.cert.CertificateConversionException;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 

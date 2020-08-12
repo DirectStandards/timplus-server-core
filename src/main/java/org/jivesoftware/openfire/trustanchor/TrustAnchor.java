@@ -3,8 +3,8 @@ package org.jivesoftware.openfire.trustanchor;
 import java.security.cert.X509Certificate;
 import java.time.Instant;
 
-import org.jivesoftware.util.cert.CertUtils;
-import org.jivesoftware.util.cert.Thumbprint;
+import org.directtruststandards.timplus.common.cert.CertUtils;
+import org.directtruststandards.timplus.common.cert.Thumbprint;
 
 public class TrustAnchor 
 {
