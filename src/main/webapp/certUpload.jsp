@@ -30,7 +30,7 @@
    Part privKeyTypePart = request.getPart("privKeyType");
    Part passphrasePart = request.getPart("passphrase");
    Part certFilePart = request.getPart("certFile");
-   Part privKeyFile = request.getPart("certFile");
+   Part privKeyFile = request.getPart("privKeyFile");
    
    final PrivateKeyType privKeyType = PrivateKeyType.fromString(IOUtils.toString(privKeyTypePart.getInputStream()));
    final String passphrase = IOUtils.toString(passphrasePart.getInputStream());

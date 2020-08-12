@@ -106,7 +106,7 @@ public class Certificate
 
     public Instant getValidStartDate() 
     {
-        return validEndDate;
+        return validStartDate;
     }
 
     public void setValidStartDate(Instant validStartDate) 

@@ -21,7 +21,6 @@ import javax.net.ssl.X509KeyManager;
 import org.apache.commons.lang3.StringUtils;
 import org.directtruststandards.timplus.common.cert.CertStoreUtils;
 import org.directtruststandards.timplus.common.cert.X509CertificateEx;
-import org.directtruststandards.timplus.common.crypto.KeyStoreProtectionManager;
 import org.jivesoftware.openfire.XMPPServer;
 import org.jivesoftware.openfire.certificate.CertificateManager;
 import org.jivesoftware.openfire.domain.DomainManager;
