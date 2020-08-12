@@ -46,8 +46,11 @@
 <%  // Get parameters //
     boolean cancel = request.getParameter("cancel") != null;
     boolean delete = request.getParameter("delete") != null;
+    boolean refresh = request.getParameter("refresh") != null;
     String bundleName = ParamUtils.getParameter(request,"bundleName");
 
+
+    
     // Handle a cancel
     if (cancel) {
         response.sendRedirect("trust-bundle-summary.jsp");
@@ -69,6 +72,13 @@
     catch (TrustBundleNotFoundException unfe) {
     }
 
+    if (refresh)
+    {
+    	TrustBundleManager.getInstance().refreshBundle(bundle);
+    	
+    	response.sendRedirect("trust-bundle-summary.jsp");
+    }
+    
 %>
 
 <html>
@@ -254,6 +264,11 @@
         <form action="trust-bundle-edit-form.jsp">
         <input type="hidden" name="bundleName" value="<%= StringUtils.escapeForXML(bundle.getBundleName()) %>">
         <input type="submit" value="<fmt:message key="global.edit_properties" />">
+        </form>
+        <br><br>
+        <form action="trust-bundle-properties.jsp">
+        <input type="hidden" name="bundleName" value="<%= StringUtils.escapeForXML(bundle.getBundleName()) %>">
+        <input type="submit" name="refresh" value="<fmt:message key="trustbundle.properties.refresh" />">
         </form>
 
 <% } %>

@@ -162,6 +162,7 @@
         <th nowrap><fmt:message key="trustbundle.summary.numAnchors" /></th>        
         <th nowrap><fmt:message key="trustbundle.summary.edit" /></th>
         <th nowrap><fmt:message key="global.delete" /></th>
+        <th nowrap><fmt:message key="global.refresh" /></th>
     </tr>
 </thead>
 <tbody>
@@ -219,6 +220,11 @@
              title="<fmt:message key="global.click_delete" />"
              ><img src="images/delete-16x16.gif" width="16" height="16" border="0" alt="<fmt:message key="global.click_delete" />"></a>
         </td>
+        <td width="1%" align="center" style="border-right:1px #ccc solid;">
+            <a href="trust-bundle-properties.jsp?bundleName=<%= URLEncoder.encode(bundle.getBundleName(), "UTF-8") %>&refresh=true"
+             title="<fmt:message key="global.click_refresh" />"
+             ><img src="images/refresh-16x16.gif" width="16" height="16" border="0" alt="<fmt:message key="global.click_refresh" />"></a>
+        </td>        
     </tr>
 
 <%
