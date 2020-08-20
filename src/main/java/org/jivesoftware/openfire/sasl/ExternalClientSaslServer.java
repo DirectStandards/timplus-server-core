@@ -82,7 +82,7 @@ public class ExternalClientSaslServer implements SaslServer
         } else {
             // Re-evaluate the validity of the peer certificate.
             final TrustStore trustStore = connection.getConfiguration().getTrustStore();
-            trusted = trustStore.getEndEntityCertificate( peerCertificates );
+            trusted = trustStore.getEndEntityCertificate( peerCertificates , "");
         }
 
         if ( trusted == null )

@@ -157,7 +157,7 @@ public class LocalIncomingServerSession extends LocalServerSession implements In
                 Connection.TLSPolicy tlsPolicy = connection.getTlsPolicy();
                 boolean hasCertificates = false;
                 try {
-                    hasCertificates = XMPPServer.getInstance().getCertificateStoreManager().getIdentityStore( ConnectionType.SOCKET_S2S ).getStore().size() > 0;
+                    hasCertificates = org.jivesoftware.openfire.certificate.CertificateManager.getInstance().getCertificatesByDomain(toDomain).size() > 0;
                 }
                 catch (Exception e) {
                     Log.error(e.getMessage(), e);

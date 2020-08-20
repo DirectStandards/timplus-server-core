@@ -223,7 +223,7 @@ public class SASLAuthentication {
                     } else {
                         // Re-evaluate the validity of the peer certificate.
                         final TrustStore trustStore = connection.getConfiguration().getTrustStore();
-                        trustedCert = trustStore.isTrusted( connection.getPeerCertificates() );
+                        trustedCert = trustStore.isTrusted( connection.getPeerCertificates() , "");
                     }
                 }
                 if ( !trustedCert ) {
@@ -242,7 +242,7 @@ public class SASLAuthentication {
         if (session.isSecure()) {
             final Connection connection   = session.getConnection();
             final TrustStore trustStore   = connection.getConfiguration().getTrustStore();
-            final X509Certificate trusted = trustStore.getEndEntityCertificate( session.getConnection().getPeerCertificates() );
+            final X509Certificate trusted = trustStore.getEndEntityCertificate( session.getConnection().getPeerCertificates() , "" );
 
             boolean haveTrustedCertificate = trusted != null;
             if (trusted != null && session.getDefaultIdentity() != null) {
@@ -370,7 +370,7 @@ public class SASLAuthentication {
                         final boolean verify = JiveGlobals.getBooleanProperty( ConnectionSettings.Server.TLS_CERTIFICATE_VERIFY, true );
                         if ( verify )
                         {
-                            if ( verifyCertificates( session.getConnection().getPeerCertificates(), saslServer.getAuthorizationID(), true ) )
+                            if ( verifyCertificates( session.getConnection().getPeerCertificates(), saslServer.getAuthorizationID(), true , "") )
                             {
                                 ( (LocalIncomingServerSession) session ).tlsAuth();
                             }
@@ -428,11 +428,11 @@ public class SASLAuthentication {
         return false;
     }
 
-    public static boolean verifyCertificates(Certificate[] chain, String hostname, boolean isS2S) {
+    public static boolean verifyCertificates(Certificate[] chain, String hostname, boolean isS2S, String localDomain) {
         final CertificateStoreManager certificateStoreManager = XMPPServer.getInstance().getCertificateStoreManager();
         final ConnectionType connectionType = isS2S ? ConnectionType.SOCKET_S2S : ConnectionType.SOCKET_C2S;
         final TrustStore trustStore = certificateStoreManager.getTrustStore( connectionType );
-        final X509Certificate trusted = trustStore.getEndEntityCertificate( chain );
+        final X509Certificate trusted = trustStore.getEndEntityCertificate( chain , localDomain);
         if (trusted != null) {
             return verifyCertificate(trusted, hostname);
         }

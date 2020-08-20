@@ -523,7 +523,7 @@ public class ServerDialback {
             }
             else {
                 log.debug( "Checking to see if the remote server provides stronger authentication based on SASL. If that's the case, dialback-based authentication can be skipped." );
-                if (SASLAuthentication.verifyCertificates(connection.getPeerCertificates(), remoteDomain, true)) {
+                if (SASLAuthentication.verifyCertificates(connection.getPeerCertificates(), remoteDomain, true, "")) {
                     log.debug( "Host authenticated based on SASL. Weaker dialback-based authentication is skipped." );
                     sb = new StringBuilder();
                     sb.append("<db:result");

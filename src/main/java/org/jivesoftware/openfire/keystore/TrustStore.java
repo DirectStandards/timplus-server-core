@@ -1,11 +1,18 @@
 package org.jivesoftware.openfire.keystore;
 
+import org.apache.commons.lang3.StringUtils;
+import org.jivesoftware.openfire.trustbundle.TrustBundle;
+import org.jivesoftware.openfire.trustbundle.TrustBundleAnchor;
+import org.jivesoftware.openfire.trustcircle.TrustCircle;
+import org.jivesoftware.openfire.trustcircle.TrustCircleManager;
 import org.jivesoftware.util.CertificateManager;
+import org.jivesoftware.util.crl.impl.CRLRevocationManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.security.KeyStoreException;
+import java.security.NoSuchProviderException;
 import java.security.cert.*;
 import java.util.*;
 
@@ -92,9 +99,9 @@ public class TrustStore extends CertificateStore
      * @param chain an array of X509Certificate where the first one is the endEntityCertificate.
      * @return true if the content of this trust store allows the chain to be trusted, otherwise false.
      */
-    public boolean isTrusted( Certificate chain[] )
+    public boolean isTrusted( Certificate chain[] , String localDomain)
     {
-        return getEndEntityCertificate( chain ) != null;
+        return getEndEntityCertificate( chain , localDomain) != null;
     }
 
     /**
@@ -107,7 +114,7 @@ public class TrustStore extends CertificateStore
      * @param chain an array of X509Certificate where the first one is the endEntityCertificate.
      * @return trusted end-entity certificate, or null.
      */
-    public X509Certificate getEndEntityCertificate( Certificate chain[] )
+    public X509Certificate getEndEntityCertificate( Certificate chain[] , String localDomain)
     {
         if ( chain == null || chain.length == 0 )
         {
@@ -125,92 +132,81 @@ public class TrustStore extends CertificateStore
             return null;
         }
 
-        if ( chain.length == 1 && first.getSubjectX500Principal().equals( first.getIssuerX500Principal() ) )
-        {
-            // Chain is single cert, and self-signed.
-            try
-            {
-                if ( store.getCertificateAlias( first ) != null )
-                {
-                    // Interesting case: trusted self-signed cert.
-                    return first;
-                }
-            }
-            catch ( KeyStoreException e )
-            {
-                Log.warn( "Keystore error while looking for self-signed cert; assuming untrusted." );
-            }
-            return null;
-        }
+    	final CRLRevocationManager revManager = CRLRevocationManager.getInstance();
+    	
+    	if (revManager.isRevoked(first))
+    	{
+    		Log.warn( "TLS end enity certificate has been marked as revoked.  The connection is rejected." );
+    		return null;
+    				
+    	}
 
-        final List<Certificate> allCerts = new ArrayList<>();
+        final List<X509Certificate> allCerts = new ArrayList<>();
         try
         {
-            // Add the trusted certs.
-            for ( Enumeration<String> aliases = store.aliases(); aliases.hasMoreElements(); )
-            {
-                String alias = aliases.nextElement();
-                if ( store.isCertificateEntry( alias ) )
-                {
-                    X509Certificate cert = (X509Certificate) store.getCertificate( alias );
-                    allCerts.add( cert );
-                }
-            }
+        	final Collection<TrustCircle> circles;
+        	
+        	if (StringUtils.isEmpty(localDomain))
+        		circles = TrustCircleManager.getInstance().getCirclesByDomain(localDomain, true, true);
+        	else
+        		circles = TrustCircleManager.getInstance().getTrustCircles(true, true);
+        	
+        	if (circles == null || circles.isEmpty())
+        		return null;
+        	
+        	for (TrustCircle circle : circles)
+        	{
+        		for (TrustBundle bundle : circle.getTrustBundles())
+        			for (TrustBundleAnchor anchor : bundle.getTrustBundleAnchors())
+        				allCerts.add(anchor.asX509Certificate());
+        		
+        		for (org.jivesoftware.openfire.trustanchor.TrustAnchor anchor : circle.getAnchors())
+        			allCerts.add(anchor.asX509Certificate());
+        	}
 
-            // Finally, add all the certs in the chain:
-            allCerts.addAll( Arrays.asList( chain ) );
+            final Set<X509Certificate> trustedIssuers = new HashSet<>();
+            trustedIssuers.addAll( allCerts);
+            
+            final Set<X509Certificate> acceptedIssuers = CertificateUtils.filterValid( trustedIssuers );
 
-            final CertStore cs = CertStore.getInstance( "Collection", new CollectionCertStoreParameters( allCerts ) );
+            // Transform all accepted issuers into a set of unique trustAnchors.
+            final Set<TrustAnchor> trustAnchors = CertificateUtils.toTrustAnchors( acceptedIssuers );
+            
+            // All certificates that are part of the (possibly incomplete) chain.
+            final CertStore certificates = CertStore.getInstance( "Collection", new CollectionCertStoreParameters( Arrays.asList( first ) ) );
+        	
+            // Build the configuration for the path builder. It is based on the collection of accepted issuers / trust anchors
             final X509CertSelector selector = new X509CertSelector();
             selector.setCertificate( first );
-            // / selector.setSubject(first.getSubjectX500Principal());
+            final PKIXBuilderParameters parameters = new PKIXBuilderParameters( trustAnchors, selector );
+            
+            // Add all certificates that are part of the chain to the configuration. Together with the trust anchors, the
+            // entire chain should now be in the store.
+            parameters.addCertStore( certificates );
 
-            final PKIXBuilderParameters params = new PKIXBuilderParameters( store, selector );
-            params.addCertStore( cs );
-            params.setDate( new Date() );
-            params.setRevocationEnabled( false );
-
-            /* Code here is the right way to do things. */
-            final CertPathBuilder pathBuilder = CertPathBuilder.getInstance( CertPathBuilder.getDefaultType() );
-            final CertPath cp = pathBuilder.build( params ).getCertPath();
-
-            /*
-             * This section is an alternative to using CertPathBuilder which is not as complete (or safe), but will emit
-             * much better errors. If things break, swap around the code.
-             *
-             **** COMMENTED OUT. ****
-             *
-            final List<X509Certificate> ls = new ArrayList<>();
-            for ( final Certificate cert : chain )
+            // When true, validation will fail if no CRLs are provided!
+            parameters.setRevocationEnabled( false );
+            
+            CertPathBuilder pathBuilder;
+            try
             {
-                ls.add( (X509Certificate) cert );
+                pathBuilder = CertPathBuilder.getInstance( "PKIX", "BC" );
             }
-
-            for ( X509Certificate last = ls.get( ls.size() - 1 );
-                  !last.getIssuerX500Principal().equals( last.getSubjectX500Principal() );
-                  last = ls.get( ls.size() - 1 ) )
+            catch ( NoSuchProviderException e )
             {
-                final X509CertSelector sel = new X509CertSelector();
-                sel.setSubject( last.getIssuerX500Principal() );
-                ls.add( (X509Certificate) cs.getCertificates( sel ).toArray()[ 0 ] );
+                Log.warn( "Unable to use the BC provider! Trying to use a fallback provider.", e );
+                pathBuilder = CertPathBuilder.getInstance( "PKIX" );
             }
-            final CertPath cp = CertificateFactory.getInstance( "X.509" ).generateCertPath( ls );
-             ****** END ALTERNATIVE. ****
-             */
+            
 
-            // Not entirely sure if I need to do this with CertPathBuilder. Can't hurt.
-            final CertPathValidator pathValidator = CertPathValidator.getInstance( "PKIX" );
-            pathValidator.validate( cp, params );
-
-            return (X509Certificate) cp.getCertificates().get( 0 );
+            // Finally, construct (and implicitly validate) the certificate path.
+            final CertPathBuilderResult result = pathBuilder.build( parameters );
+            
+            return (X509Certificate) result.getCertPath().getCertificates().get( 0 );
         }
         catch ( CertPathBuilderException e )
         {
             Log.warn( "Path builder exception while validating certificate chain:", e );
-        }
-        catch ( CertPathValidatorException e )
-        {
-            Log.warn( "Path exception while validating certificate chain:", e );
         }
         catch ( Exception e )
         {

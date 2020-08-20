@@ -309,7 +309,7 @@ public class LocalClientSession extends LocalSession implements ClientSession {
         if (!connection.isSecure()) {
             boolean hasCertificates = false;
             try {
-                hasCertificates = connectionConfiguration.getIdentityStore().getAllCertificates().size() > 0;
+                hasCertificates = org.jivesoftware.openfire.certificate.CertificateManager.getInstance().getCertificatesByDomain(serverName).size() > 0;
             }
             catch (Exception e) {
                 Log.error(e.getMessage(), e);

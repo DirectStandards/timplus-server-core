@@ -464,7 +464,7 @@ public class LocalOutgoingServerSession extends LocalServerSession implements Ou
                 throw e;
             }
             log.debug( "TLS negotiation was successful. Connection secured. Proceeding with authentication..." );
-            if (!SASLAuthentication.verifyCertificates(connection.getPeerCertificates(), remoteDomain, true)) {
+            if (!SASLAuthentication.verifyCertificates(connection.getPeerCertificates(), remoteDomain, true, localDomain)) {
                 if (ServerDialback.isEnabled() || ServerDialback.isEnabledForSelfSigned()) {
                     log.debug( "SASL authentication failed. Will continue with dialback." );
                 } else {
