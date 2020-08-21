@@ -146,7 +146,7 @@ public class TrustStore extends CertificateStore
         {
         	final Collection<TrustCircle> circles;
         	
-        	if (StringUtils.isEmpty(localDomain))
+        	if (!StringUtils.isEmpty(localDomain))
         		circles = TrustCircleManager.getInstance().getCirclesByDomain(localDomain, true, true);
         	else
         		circles = TrustCircleManager.getInstance().getTrustCircles(true, true);

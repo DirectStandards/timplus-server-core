@@ -242,7 +242,7 @@ public class SASLAuthentication {
         if (session.isSecure()) {
             final Connection connection   = session.getConnection();
             final TrustStore trustStore   = connection.getConfiguration().getTrustStore();
-            final X509Certificate trusted = trustStore.getEndEntityCertificate( session.getConnection().getPeerCertificates() , "" );
+            final X509Certificate trusted = trustStore.getEndEntityCertificate( session.getConnection().getPeerCertificates() , session.getServerName() );
 
             boolean haveTrustedCertificate = trusted != null;
             if (trusted != null && session.getDefaultIdentity() != null) {
@@ -370,7 +370,7 @@ public class SASLAuthentication {
                         final boolean verify = JiveGlobals.getBooleanProperty( ConnectionSettings.Server.TLS_CERTIFICATE_VERIFY, true );
                         if ( verify )
                         {
-                            if ( verifyCertificates( session.getConnection().getPeerCertificates(), saslServer.getAuthorizationID(), true , "") )
+                            if ( verifyCertificates( session.getConnection().getPeerCertificates(), saslServer.getAuthorizationID(), true ,  ( (LocalIncomingServerSession) session ).getServerName()))
                             {
                                 ( (LocalIncomingServerSession) session ).tlsAuth();
                             }
