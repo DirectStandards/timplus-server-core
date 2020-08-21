@@ -126,7 +126,7 @@ public class ServerDialback {
      * @return true if server dialback is enabled.
      */
     public static boolean isEnabled() {
-        return JiveGlobals.getBooleanProperty(ConnectionSettings.Server.DIALBACK_ENABLED, true);
+        return JiveGlobals.getBooleanProperty(ConnectionSettings.Server.DIALBACK_ENABLED, false);
     }
 
     /**

@@ -107,6 +107,9 @@ public class OpenfireX509TrustManager implements X509TrustManager
     	
 		// make sure we have a reference id so we no what domain connection is being requested
 		final String referenceId = ReferenceIDUtil.getSessionReferenceId(engine.getSession());
+		
+		Log.info("Looking up trust anchors associated to domain " + referenceId);
+		
     	try
     	{
 			if (referenceId != null)
@@ -241,7 +244,7 @@ public class OpenfireX509TrustManager implements X509TrustManager
         // The set of trusted issuers (for this invocation), based on the issuers from the truststore.
         final Set<X509Certificate> trustedIssuers = new HashSet<>();
         trustedIssuers.addAll( Arrays.asList(getAcceptedIssuers() ));
-
+        
         // When accepting self-signed certificates, and the chain is a self-signed certificate, add it to the collection
         // of trusted issuers. Blindly accepting this issuer is undesirable, as that would circumvent other checks, such
         // as expiration checking.
@@ -273,6 +276,10 @@ public class OpenfireX509TrustManager implements X509TrustManager
             acceptedIssuers = trustedIssuers;
         }
 
+        Log.info("Using the following trust anchors for checking trust of the TLS connection for certificate " + endEntityCert.getSubjectDN());
+        for (X509Certificate anchor : acceptedIssuers)
+        	Log.info("\tDN=" + anchor.getIssuerDN());
+        
         // Transform all accepted issuers into a set of unique trustAnchors.
         final Set<TrustAnchor> trustAnchors = CertificateUtils.toTrustAnchors( acceptedIssuers );
 

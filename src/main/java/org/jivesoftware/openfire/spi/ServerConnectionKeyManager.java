@@ -23,7 +23,6 @@ import org.directtruststandards.timplus.common.cert.CertStoreUtils;
 import org.directtruststandards.timplus.common.cert.X509CertificateEx;
 import org.jivesoftware.openfire.XMPPServer;
 import org.jivesoftware.openfire.certificate.CertificateManager;
-import org.jivesoftware.openfire.domain.DomainManager;
 import org.jivesoftware.util.ReferenceIDUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,7 +35,7 @@ import org.slf4j.LoggerFactory;
  */
 public class ServerConnectionKeyManager extends X509ExtendedKeyManager implements X509KeyManager
 {
-	private static final Logger Log = LoggerFactory.getLogger(DomainManager.class);	
+	private static final Logger Log = LoggerFactory.getLogger(ServerConnectionKeyManager.class);	
 	
 	private static final int DNSName_TYPE = 2; // name type constant for Subject Alternative name domain name	
 	
@@ -121,7 +120,7 @@ public class ServerConnectionKeyManager extends X509ExtendedKeyManager implement
     	if (StringUtils.isEmpty(referenceId))
     		Log.warn("Can not lookup a certificate for an empty reference id");
     	else
-    		Log.warn("Could not get a certificate for reference id " + referenceId);
+    		Log.warn("Could not get a certificate for reference id " + referenceId + " and key type" + keyType);
     	
     	return null;
     }
