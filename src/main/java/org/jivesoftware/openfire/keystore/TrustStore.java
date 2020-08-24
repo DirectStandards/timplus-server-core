@@ -147,7 +147,7 @@ public class TrustStore extends CertificateStore
         	final Collection<TrustCircle> circles;
         	
         	if (!StringUtils.isEmpty(localDomain))
-        		circles = TrustCircleManager.getInstance().getCirclesByDomain(localDomain, true, true);
+        		circles = TrustCircleManager.getInstance().getCirclesByDomain(getTopDomain(localDomain), true, true);
         	else
         		circles = TrustCircleManager.getInstance().getTrustCircles(true, true);
         	
@@ -215,4 +215,17 @@ public class TrustStore extends CertificateStore
         return null;
     }
 
+    protected String getTopDomain(String domain)
+    {
+    	if (StringUtils.isEmpty(domain))
+    		return "";
+    	
+    	String workDomain = domain.toLowerCase();
+    	if (workDomain.startsWith("groupchat."))
+    		return workDomain.substring("groupchat.".length());
+    	else if (workDomain.startsWith("ftproxystream."))
+    		return workDomain.substring("ftproxystream.".length());
+    	
+    	return workDomain;
+    }
 }
