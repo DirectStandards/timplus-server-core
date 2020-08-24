@@ -47,7 +47,7 @@ public class DefaultTrustCircleProvider implements TrustCircleProvider
     
 	private static final String DELETE_TRUST_CIRCLE = "DELETE from ofTrustCircle WHERE UPPER(circleName) = ?";
 	
-	private static final String LOAD_DOMAIN_CIRCLES = "SELECT trustCircleId FROM ofTrustCircleDomainReltn where domainName = ?";
+	private static final String LOAD_DOMAIN_CIRCLES = "SELECT trustCircleId FROM ofTrustCircleDomainReltn where UPPER(domainName) = ?";
 	
 	private static final String DELETE_TRUST_CIRCLE_DOMAIN_ASSOC = "DELETE FROM ofTrustCircleDomainReltn where trustCircleId = ? and domainName = ?";	
 	
@@ -403,7 +403,7 @@ public class DefaultTrustCircleProvider implements TrustCircleProvider
 	           pstmt = con.prepareStatement(LOAD_DOMAIN_CIRCLES);
 	            // Set the fetch size. This will prevent some JDBC drivers from trying
 	            // to load the entire result set into memory.
-	           pstmt.setString(1, domainName);
+	           pstmt.setString(1, domainName.toUpperCase());
 	          
 	           
 	           DbConnectionManager.setFetchSize(pstmt, 500);

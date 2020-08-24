@@ -1,5 +1,6 @@
 package org.jivesoftware.openfire.keystore;
 
+import org.apache.commons.lang3.StringUtils;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.jivesoftware.openfire.trustbundle.TrustBundle;
 import org.jivesoftware.openfire.trustbundle.TrustBundleAnchor;
@@ -106,7 +107,7 @@ public class OpenfireX509TrustManager implements X509TrustManager
     	Collection<TrustCircle> circles = null;
     	
 		// make sure we have a reference id so we no what domain connection is being requested
-		final String referenceId = ReferenceIDUtil.getSessionReferenceId(engine.getSession());
+		final String referenceId = getTopDomain(ReferenceIDUtil.getSessionReferenceId(engine.getSession()));
 		
 		Log.info("Looking up trust anchors associated to domain " + referenceId);
 		
@@ -367,5 +368,19 @@ public class OpenfireX509TrustManager implements X509TrustManager
             }
         }
 
+    }
+    
+    protected String getTopDomain(String domain)
+    {
+    	if (StringUtils.isEmpty(domain))
+    		return "";
+    	
+    	String workDomain = domain.toLowerCase();
+    	if (workDomain.startsWith("groupchat."))
+    		return workDomain.substring("groupchat.".length());
+    	else if (workDomain.startsWith("ftproxystream."))
+    		return workDomain.substring("ftproxystream.".length());
+    	
+    	return workDomain;
     }
 }
