@@ -188,15 +188,6 @@ public class LocalIncomingServerSession extends LocalServerSession implements In
                     }
                     sb.append("</starttls>");
                 }
-                
-                // Include available SASL Mechanisms
-                sb.append(SASLAuthentication.getSASLMechanisms(session));
-                
-                if (ServerDialback.isEnabled()) {
-                    // Also offer server dialback (when TLS is not required). Server dialback may be offered
-                    // after TLS has been negotiated and a self-signed certificate is being used
-                    sb.append("<dialback xmlns=\"urn:xmpp:features:dialback\"><errors/></dialback>");
-                }
 
                 sb.append("</stream:features>");
             }
