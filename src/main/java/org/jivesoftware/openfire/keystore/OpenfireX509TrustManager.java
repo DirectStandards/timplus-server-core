@@ -109,7 +109,7 @@ public class OpenfireX509TrustManager implements X509TrustManager
 		// make sure we have a reference id so we no what domain connection is being requested
 		final String referenceId = getTopDomain(ReferenceIDUtil.getSessionReferenceId(engine.getSession()));
 		
-		Log.info("Looking up trust anchors associated to domain " + referenceId);
+		Log.debug("Looking up trust anchors associated to domain " + referenceId);
 		
     	try
     	{
@@ -277,7 +277,7 @@ public class OpenfireX509TrustManager implements X509TrustManager
             acceptedIssuers = trustedIssuers;
         }
 
-        Log.info("Using the following trust anchors for checking trust of the TLS connection for certificate " + endEntityCert.getSubjectDN());
+        Log.debug("Using the following trust anchors for checking trust of the TLS connection for certificate " + endEntityCert.getSubjectDN());
         for (X509Certificate anchor : acceptedIssuers)
         	Log.info("\tDN=" + anchor.getIssuerDN());
         

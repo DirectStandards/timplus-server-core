@@ -1,18 +1,19 @@
 package org.jivesoftware.openfire.keystore;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
+import org.directtruststandards.timplus.common.crypto.CryptoUtils;
+import org.jivesoftware.openfire.keystore.jce.TIMPlusKeyStoreProvider;
 import org.jivesoftware.util.CertificateManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.security.*;
+import java.security.KeyStore.LoadStoreParameter;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
@@ -35,6 +36,11 @@ import java.util.*;
  */
 public abstract class CertificateStore
 {
+	static
+	{
+		CryptoUtils.registerJCEProvider(new TIMPlusKeyStoreProvider());
+	}
+	
     private static final Logger Log = LoggerFactory.getLogger( CertificateStore.class );
 
     protected static final Provider PROVIDER = new BouncyCastleProvider();
@@ -58,6 +64,7 @@ public abstract class CertificateStore
         this.configuration = configuration;
         try
         {
+        	/*
             final File file = configuration.getFile();
 
             if ( createIfAbsent && !file.exists() )
@@ -77,8 +84,11 @@ public abstract class CertificateStore
                     store.load( is, configuration.getPassword() );
                 }
             }
+            */
+        	store = KeyStore.getInstance(TIMPlusKeyStoreProvider.KEY_STORE_TYPE);
+        	store.load((LoadStoreParameter)null);
         }
-        catch ( IOException | KeyStoreException | NoSuchAlgorithmException | CertificateException ex )
+        catch ( Exception ex)
         {
             throw new CertificateStoreConfigException( "Unable to load store of type '" + configuration.getType() + "' from file '" + configuration.getFile() + "'", ex );
         }

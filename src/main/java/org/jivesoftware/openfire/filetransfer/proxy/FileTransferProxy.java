@@ -20,9 +20,6 @@ import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
 import java.net.UnknownHostException;
-import java.security.KeyStore;
-import java.security.KeyStore.Builder;
-import java.security.KeyStore.PasswordProtection;
 import java.security.cert.CertPath;
 import java.security.cert.CertPathValidator;
 import java.security.cert.Certificate;
@@ -42,6 +39,7 @@ import org.jivesoftware.openfire.RoutableChannelHandler;
 import org.jivesoftware.openfire.RoutingTable;
 import org.jivesoftware.openfire.XMPPServer;
 import org.jivesoftware.openfire.auth.UnauthorizedException;
+import org.jivesoftware.openfire.certificate.CertificateManager;
 import org.jivesoftware.openfire.container.BasicModule;
 import org.jivesoftware.openfire.disco.DiscoInfoProvider;
 import org.jivesoftware.openfire.disco.DiscoItem;
@@ -52,10 +50,12 @@ import org.jivesoftware.openfire.domain.DomainManager;
 import org.jivesoftware.openfire.filetransfer.FileTransferManager;
 import org.jivesoftware.openfire.filetransfer.proxy.credentials.ProxyServerCredential;
 import org.jivesoftware.openfire.filetransfer.proxy.credentials.ProxyServerCredentialManager;
+import org.jivesoftware.openfire.keystore.CertificateUtils;
 import org.jivesoftware.openfire.spi.ConnectionConfiguration;
-import org.jivesoftware.openfire.spi.ConnectionListener;
-import org.jivesoftware.openfire.spi.ConnectionManagerImpl;
-import org.jivesoftware.openfire.spi.ConnectionType;
+import org.jivesoftware.openfire.trustanchor.TrustAnchorManager;
+import org.jivesoftware.openfire.trustbundle.TrustBundle;
+import org.jivesoftware.openfire.trustbundle.TrustBundleAnchor;
+import org.jivesoftware.openfire.trustbundle.TrustBundleManager;
 import org.jivesoftware.util.JiveGlobals;
 import org.jivesoftware.util.PropertyEventDispatcher;
 import org.jivesoftware.util.PropertyEventListener;
@@ -77,8 +77,6 @@ import org.xmpp.packet.PacketError;
 public class FileTransferProxy extends BasicModule
         implements ServerItemsProvider, DiscoInfoProvider, DiscoItemsProvider,
         RoutableChannelHandler {
-
-	private static final int DNSName_TYPE = 2;
 	
     private static final Logger Log = LoggerFactory.getLogger( FileTransferProxy.class);
 
@@ -127,8 +125,6 @@ public class FileTransferProxy extends BasicModule
 
     // The address to operate on. Null for any address.
     private InetAddress bindInterface;
-
-    private ConnectionConfiguration configuration;
 
     public FileTransferProxy() 
     {
@@ -563,119 +559,84 @@ public class FileTransferProxy extends BasicModule
     
     protected String getProxyCA(JID proxyJID)
     {
-    	if (configuration == null)
-    	{
-    		synchronized(this)
-    		{
-	    		final ConnectionManagerImpl connectionManager = ((ConnectionManagerImpl) XMPPServer.getInstance().getConnectionManager());
-	    		final ConnectionListener listener = connectionManager.getListener( ConnectionType.SOCKET_S2S, false);
-	        
-	    		this.configuration = listener.generateConnectionConfiguration();
-    		}
-    	}
-    	
-        Builder builder = Builder.newInstance(configuration.getIdentityStore().getStore(),
-                new PasswordProtection(configuration.getIdentityStoreConfiguration().getPassword()));
-        
         X509Certificate trustCACert = null;
         
         try
 		{
-        	// find a certificate in the identity store that has an SAN that
-        	// matches the JID of the file transfer service
+        	// get the certificate for this JID
+        	final Collection<org.jivesoftware.openfire.certificate.Certificate> domainCerts = 
+        			CertificateManager.getInstance().getCertificatesByDomain(proxyJID.getDomain());
+        	
+        	
         	X509Certificate proxyServerCert = null;
         	
-			final KeyStore identityKs = builder.getKeyStore();
-			if (identityKs != null)
-			{
-		    	for (Enumeration<String> e = identityKs.aliases(); e.hasMoreElements(); )
-		    	{
-		    		final String alias = e.nextElement();
-		            if (identityKs.isKeyEntry(alias) == false) 
-		            {
-		                continue;
-		            }
-		            
-		            final Certificate possibleCert = identityKs.getCertificate(alias);
-		            if (possibleCert != null && possibleCert instanceof X509Certificate)
-		            {
-		            	final X509Certificate xCert = X509Certificate.class.cast(possibleCert);
-		            	
-			            final Collection<List<?>> subjAltNames = xCert.getSubjectAlternativeNames();
-			            if (subjAltNames != null) 
-			            {
-			                for ( List<?> next : subjAltNames) 
-			                {
-			                    if (((Integer)next.get(0)).intValue() == DNSName_TYPE) 
-			                    {
-			                        String dnsName = (String)next.get(1);
-			                        if (proxyJID.getDomain().toLowerCase().equals(dnsName.toLowerCase())) 
-			                        {
-			                        	// found
-			                        	proxyServerCert = xCert;
-			                        	break;
-			                        }
-			                    }
-			                }
-			                if (proxyServerCert != null)
-			                	break;
-			            }
-		            }
-		    	}
-		    	
-			}
+        	if (domainCerts != null)
+        	{
+        	  // get the first non expired certificate
+        	  for (org.jivesoftware.openfire.certificate.Certificate cert : domainCerts)
+        	  {
+        		  if (!CertificateUtils.filterValid(cert.asX509Certificate()).isEmpty())
+        		  {
+        			  proxyServerCert = cert.asX509Certificate();
+        			  break;
+        		  }
+        	  }
+        	
+        	}
 			
 			if (proxyServerCert != null)
 			{
-		        builder = Builder.newInstance(configuration.getTrustStore().getStore(),
-		                new PasswordProtection(configuration.getTrustStoreConfiguration().getPassword()));
+				final Collection<X509Certificate> allAnchors = new ArrayList<>();
+				
 				// find the anchor that this chains to
 		        
-				final KeyStore trustKS = builder.getKeyStore();
-				if (trustKS != null)
-				{
-			    	for (Enumeration<String> e = trustKS.aliases(); e.hasMoreElements(); )
-			    	{
-			    		final String alias = e.nextElement();
+				final Collection<TrustBundle> bundles = TrustBundleManager.getInstance().getTrustBundles(true);
+				for (TrustBundle bundle : bundles)
+					for (TrustBundleAnchor anchor : bundle.getTrustBundleAnchors())
+						allAnchors.add(anchor.asX509Certificate());
+				
+				for (org.jivesoftware.openfire.trustanchor.TrustAnchor anchor : TrustAnchorManager.getInstance().getAnchors())
+					allAnchors.add(anchor.asX509Certificate());
+				
 
-			            final Certificate possibleCACert = trustKS.getCertificate(alias);
-			            if (possibleCACert != null && possibleCACert instanceof X509Certificate)
-			            {
-			            	final X509Certificate xCACert = X509Certificate.class.cast(possibleCACert);
-			            	
-			        		CertPath certPath = null;
-			            	CertificateFactory factory = CertificateFactory.getInstance("X509");
-			            	
-			            	List<Certificate> certs = new ArrayList<Certificate>();
-			            	certs.add(proxyServerCert);
-			            	
-			            	final Set<TrustAnchor> trustAnchorSet = new HashSet<TrustAnchor>();
-			        		
-			            	
-			            	trustAnchorSet.add(new TrustAnchor(xCACert, null));
-			            	
-			                final PKIXParameters params = new PKIXParameters(trustAnchorSet); 
-			                
-			                params.setRevocationEnabled(false);
-			                
-			            	certPath = factory.generateCertPath(certs);
-			            	final CertPathValidator pathValidator = CertPathValidator.getInstance("PKIX", "BC");    		
-			        		
-			            	try
-			            	{
-			            		pathValidator.validate(certPath, params);
-			            		
-			            		trustCACert = xCACert;
-			            		break;
-			            	}
-			            	catch (Exception v)
-			            	{
-			            		/* no-op, not in the trust chain */
-			            	}
-			            }
-			    	}
-			    	
-				}		        
+		    	for (X509Certificate possibleCACert : allAnchors)
+		    	{
+		            if (possibleCACert != null && possibleCACert instanceof X509Certificate)
+		            {
+		            	final X509Certificate xCACert = X509Certificate.class.cast(possibleCACert);
+		            	
+		        		CertPath certPath = null;
+		            	CertificateFactory factory = CertificateFactory.getInstance("X509");
+		            	
+		            	List<Certificate> certs = new ArrayList<Certificate>();
+		            	certs.add(proxyServerCert);
+		            	
+		            	final Set<TrustAnchor> trustAnchorSet = new HashSet<TrustAnchor>();
+		        		
+		            	
+		            	trustAnchorSet.add(new TrustAnchor(xCACert, null));
+		            	
+		                final PKIXParameters params = new PKIXParameters(trustAnchorSet); 
+		                
+		                params.setRevocationEnabled(false);
+		                
+		            	certPath = factory.generateCertPath(certs);
+		            	final CertPathValidator pathValidator = CertPathValidator.getInstance("PKIX", "BC");    		
+		        		
+		            	try
+		            	{
+		            		pathValidator.validate(certPath, params);
+		            		
+		            		trustCACert = xCACert;
+		            		break;
+		            	}
+		            	catch (Exception v)
+		            	{
+		            		/* no-op, not in the trust chain */
+		            	}
+		            }
+		    	}
+			    		        
 			}
 		} 
         catch (Exception e)
