@@ -64,27 +64,6 @@ public abstract class CertificateStore
         this.configuration = configuration;
         try
         {
-        	/*
-            final File file = configuration.getFile();
-
-            if ( createIfAbsent && !file.exists() )
-            {
-                try ( final FileOutputStream os = new FileOutputStream( file.getPath() ) )
-                {
-                    store = KeyStore.getInstance( configuration.getType() );
-                    store.load( null, configuration.getPassword() );
-                    store.store( os, configuration.getPassword() );
-                }
-            }
-            else
-            {
-                try ( final FileInputStream is = new FileInputStream( file ) )
-                {
-                    store = KeyStore.getInstance( configuration.getType() );
-                    store.load( is, configuration.getPassword() );
-                }
-            }
-            */
         	store = KeyStore.getInstance(TIMPlusKeyStoreProvider.KEY_STORE_TYPE);
         	store.load((LoadStoreParameter)null);
         }

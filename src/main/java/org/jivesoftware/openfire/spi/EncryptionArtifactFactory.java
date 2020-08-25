@@ -15,8 +15,6 @@ import org.slf4j.LoggerFactory;
 import javax.net.ssl.*;
 import java.lang.reflect.Constructor;
 import java.security.*;
-import java.security.KeyStore.Builder;
-import java.security.KeyStore.PasswordProtection;
 import java.util.*;
 
 /**

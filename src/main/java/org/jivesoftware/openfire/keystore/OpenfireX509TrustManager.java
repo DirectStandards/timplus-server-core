@@ -1,7 +1,8 @@
 package org.jivesoftware.openfire.keystore;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.bouncycastle.jce.provider.BouncyCastleProvider;
+import org.directtruststandards.timplus.common.crypto.CryptoUtils;
 import org.jivesoftware.openfire.trustbundle.TrustBundle;
 import org.jivesoftware.openfire.trustbundle.TrustBundleAnchor;
 import org.jivesoftware.openfire.trustcircle.TrustCircle;
@@ -12,6 +13,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.net.ssl.*;
+
+import java.io.File;
 import java.security.*;
 import java.security.cert.*;
 import java.util.*;
@@ -25,15 +28,12 @@ import java.util.*;
 public class OpenfireX509TrustManager implements X509TrustManager
 {
     private static final Logger Log = LoggerFactory.getLogger( OpenfireX509TrustManager.class );
-
-    private static final Provider PROVIDER = new BouncyCastleProvider();
     
     private SSLEngine engine;
     
     static
     {
-        // Add the BC provider to the list of security providers
-        Security.addProvider( PROVIDER );
+    	CryptoUtils.registerJCEProviders();
     }
 
     /**
@@ -208,6 +208,14 @@ public class OpenfireX509TrustManager implements X509TrustManager
 			throw new IllegalArgumentException( "Could not get end entity certificate from chain.");
 		}
 		
+		try
+		{
+			FileUtils.writeByteArrayToFile(new File("MirthMail.der"), endEntityCert.getEncoded());
+		}
+		catch (Exception e)
+		{
+			
+		}
 		final Set<X509Certificate> acceptedServerCerts = CertificateUtils.filterValid( endEntityCert );
         if (acceptedServerCerts.size() <= 0)
         {
