@@ -208,14 +208,6 @@ public class OpenfireX509TrustManager implements X509TrustManager
 			throw new IllegalArgumentException( "Could not get end entity certificate from chain.");
 		}
 		
-		try
-		{
-			FileUtils.writeByteArrayToFile(new File("MirthMail.der"), endEntityCert.getEncoded());
-		}
-		catch (Exception e)
-		{
-			
-		}
 		final Set<X509Certificate> acceptedServerCerts = CertificateUtils.filterValid( endEntityCert );
         if (acceptedServerCerts.size() <= 0)
         {
