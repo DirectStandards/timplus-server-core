@@ -279,7 +279,7 @@ public class OpenfireX509TrustManager implements X509TrustManager
 
         Log.debug("Using the following trust anchors for checking trust of the TLS connection for certificate " + endEntityCert.getSubjectDN());
         for (X509Certificate anchor : acceptedIssuers)
-        	Log.info("\tDN=" + anchor.getIssuerDN());
+        	Log.debug("\tDN=" + anchor.getIssuerDN());
         
         // Transform all accepted issuers into a set of unique trustAnchors.
         final Set<TrustAnchor> trustAnchors = CertificateUtils.toTrustAnchors( acceptedIssuers );

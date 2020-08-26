@@ -120,7 +120,7 @@ public class ServerConnectionKeyManager extends X509ExtendedKeyManager implement
     	if (StringUtils.isEmpty(referenceId))
     		Log.warn("Can not lookup a certificate for an empty reference id");
     	else
-    		Log.warn("Could not get a certificate for reference id " + referenceId + " and key type" + keyType);
+    		Log.debug("Could not get a certificate for reference id " + referenceId + " and key type " + keyType);
     	
     	return null;
     }
