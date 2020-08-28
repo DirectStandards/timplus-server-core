@@ -1,6 +1,5 @@
 package org.jivesoftware.openfire.keystore;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.directtruststandards.timplus.common.crypto.CryptoUtils;
 import org.jivesoftware.openfire.trustbundle.TrustBundle;
@@ -14,7 +13,6 @@ import org.slf4j.LoggerFactory;
 
 import javax.net.ssl.*;
 
-import java.io.File;
 import java.security.*;
 import java.security.cert.*;
 import java.util.*;

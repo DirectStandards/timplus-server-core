@@ -17,6 +17,7 @@
 package org.jivesoftware.openfire;
 
 import java.net.UnknownHostException;
+import java.security.cert.Certificate;
 import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -35,6 +36,7 @@ import org.jivesoftware.openfire.domain.DomainManager;
 import org.jivesoftware.openfire.event.SessionEventDispatcher;
 import org.jivesoftware.openfire.http.HttpConnection;
 import org.jivesoftware.openfire.http.HttpSession;
+import org.jivesoftware.openfire.keystore.TrustStore;
 import org.jivesoftware.openfire.multiplex.ConnectionMultiplexerManager;
 import org.jivesoftware.openfire.server.OutgoingSessionPromise;
 import org.jivesoftware.openfire.session.*;
@@ -494,7 +496,8 @@ public class SessionManager extends BasicModule implements ClusterEventListener
     public void registerIncomingServerSession(String hostname, LocalIncomingServerSession session) {
         // Keep local track of the incoming server session connected to this JVM
         StreamID streamID = session.getStreamID();
-        localSessionManager.addIncomingServerSessions(streamID, session);
+        localSessionManager.addIncomingServerSessions(streamID, session);     
+        
         // Keep track of the nodeID hosting the incoming server session
         incomingServerSessionsCache.put(streamID, server.getNodeID());
         // Update list of sockets/sessions coming from the same remote hostname
@@ -1495,6 +1498,8 @@ public class SessionManager extends BasicModule implements ClusterEventListener
             period = Duration.ofMinutes(3).toMillis();
         }
         TaskEngine.getInstance().scheduleAtFixedRate(new DetachedCleanupTask(), period, period);
+        
+        TaskEngine.getInstance().scheduleAtFixedRate(new RemoteServerValidationTask(), 3600000, 3600000);
     }
 
     @Override
@@ -1771,4 +1776,85 @@ public class SessionManager extends BasicModule implements ClusterEventListener
         }
     }
 
+    /**
+     * Task that iterates through all incoming and outgoing server sessions and validates
+     * that the security and trust parameters of the session are still valid
+     */
+    private class RemoteServerValidationTask extends TimerTask 
+    {
+
+		@Override
+		public void run()
+		{
+			TrustStore trustManager = null;
+			
+			try
+			{
+				trustManager = new TrustStore(null, false);
+			}
+			catch (Exception e)
+			{
+				Log.warn("Could not get trustManager.  The remote server validation task will not be performed.", e);
+			}
+			
+			// validate the certificates from servers connecting to us (incoming connections)
+			for (LocalIncomingServerSession localSession : localSessionManager.getIncomingServerSessions())
+			{
+				final Certificate[] certs = localSession.getConnection().getPeerCertificates();
+				if (!trustManager.isTrusted(certs, localSession.getLocalDomain()))
+				{
+					Log.info("The inbound connection to the domain " + localSession.getConnection().getConnectionDomain() + " is no longer trusted.  The connection will be closed");
+				
+					closeIncomingSession(localSession);
+				}
+			}   
+			
+			/*
+			 * Outgoing sessions are kept in the routing table.  Validate outgoing sessions
+			 */
+			for (DomainPair pair : routingTable.getServerRoutes())
+			{
+				final OutgoingServerSession session = routingTable.getServerRoute(pair);
+				if (session != null & session instanceof LocalOutgoingServerSession)
+				{
+					final LocalOutgoingServerSession outgoingSession = LocalOutgoingServerSession.class.cast(session);
+
+					final Certificate[] certs = outgoingSession.getPeerCertificates(); 
+					if (!trustManager.isTrusted(certs, outgoingSession.getServerName()))
+					{
+						Log.warn("The outbound connection to the domain " + outgoingSession.getConnection().getConnectionDomain() + " is no longer trusted.  The connection will be closed");
+						closeOutgoingSession(outgoingSession);
+					}
+				}
+			}
+		}
+		
+		protected void closeIncomingSession(LocalIncomingServerSession localSession)
+		{
+			try
+			{
+				// according to the local session manager class, we just need to close the session
+				localSession.close();
+			}
+			catch (Exception e)
+			{
+				Log.warn("Failed to successfully close connection from incoming connection domain " + localSession.getConnection().getConnectionDomain());
+			}
+			
+		}
+    	
+		protected void closeOutgoingSession(LocalOutgoingServerSession localSession)
+		{
+			try
+			{
+				// according to the local session manager class, we just need to close the session
+				localSession.close();
+			}
+			catch (Exception e)
+			{
+				Log.warn("Failed to successfully close connection from outgoing connection domain " + localSession.getConnection().getConnectionDomain());
+			}
+			
+		}		
+    }
 }

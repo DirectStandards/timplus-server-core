@@ -3,11 +3,9 @@ package org.jivesoftware.openfire.keystore;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.directtruststandards.timplus.common.crypto.CryptoUtils;
 import org.jivesoftware.openfire.keystore.jce.TIMPlusKeyStoreProvider;
-import org.jivesoftware.util.CertificateManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -56,11 +54,6 @@ public abstract class CertificateStore
 
     public CertificateStore( CertificateStoreConfiguration configuration, boolean createIfAbsent ) throws CertificateStoreConfigException
     {
-        if (configuration == null)
-        {
-            throw new IllegalArgumentException( "Argument 'configuration' cannot be null." );
-        }
-
         this.configuration = configuration;
         try
         {
@@ -69,7 +62,7 @@ public abstract class CertificateStore
         }
         catch ( Exception ex)
         {
-            throw new CertificateStoreConfigException( "Unable to load store of type '" + configuration.getType() + "' from file '" + configuration.getFile() + "'", ex );
+            throw new CertificateStoreConfigException( "Unable to load certificate store.");
         }
     }
 
@@ -80,15 +73,8 @@ public abstract class CertificateStore
      */
     public void reload() throws CertificateStoreConfigException
     {
-        try ( final FileInputStream is = new FileInputStream( configuration.getFile() ) )
-        {
-            store.load( is, configuration.getPassword() );
-            CertificateManager.fireCertificateStoreChanged( this );
-        }
-        catch ( IOException | NoSuchAlgorithmException | CertificateException ex )
-        {
-            throw new CertificateStoreConfigException( "Unable to reload store in '" + configuration.getFile() + "'", ex );
-        }
+
+        /*no-op*/
     }
 
     /**
@@ -98,14 +84,7 @@ public abstract class CertificateStore
      */
     public void persist() throws CertificateStoreConfigException
     {
-        try ( final FileOutputStream os = new FileOutputStream( configuration.getFile() ) )
-        {
-            store.store( os, configuration.getPassword() );
-        }
-        catch ( NoSuchAlgorithmException | KeyStoreException | CertificateException | IOException ex )
-        {
-            throw new CertificateStoreConfigException( "Unable to save changes to store in '" + configuration.getFile() + "'", ex );
-        }
+    	/*no-op*/
     }
 
     /**
@@ -115,20 +94,7 @@ public abstract class CertificateStore
      */
     public Path backup()
     {
-        final String postfix = "." + new Date().getTime();
-        final Path original = configuration.getFile().toPath();
-        final Path backup = configuration.getBackupDirectory().toPath().resolve( original.getFileName() + postfix );
-
-        Log.info( "Creating a backup of {} in {}.", original, backup );
-        try
-        {
-            Files.copy( original, backup );
-            return backup;
-        }
-        catch ( IOException e )
-        {
-            Log.error( "An error occurred creating a backup of {} in {}!", original, backup, e );
-        }
+    	/*no-op*/
         return null;
     }
 
@@ -187,7 +153,6 @@ public abstract class CertificateStore
         }
         catch ( CertificateStoreConfigException | KeyStoreException e )
         {
-            reload(); // reset state of the store.
             throw new CertificateStoreConfigException( "Unable to delete the certificate from the identity store.", e );
 
         }
