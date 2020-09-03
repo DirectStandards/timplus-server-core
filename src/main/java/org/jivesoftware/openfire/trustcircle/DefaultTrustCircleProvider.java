@@ -373,7 +373,7 @@ public class DefaultTrustCircleProvider implements TrustCircleProvider
         {	
         	con = DbConnectionManager.getTransactionConnection();
             pstmt = con.prepareStatement(DELETE_TRUST_CIRCLE);
-            pstmt.setString(1, circleName);
+            pstmt.setString(1, circleName.toUpperCase());
             pstmt.execute();
         }
         catch (Exception e) 
@@ -461,7 +461,32 @@ public class DefaultTrustCircleProvider implements TrustCircleProvider
 	@Override
 	public void addDomainsToCircle(String circleName, Collection<String> domainNames) throws TrustCircleException
 	{
-		// TODO Auto-generated method stub
+		for (String domainName : domainNames)
+		{
+			final TrustCircle circle = this.getTrustCircle(circleName, false, false);
+			
+	        Connection con = null;
+	        PreparedStatement pstmt = null;
+	        boolean abortTransaction = false;
+	        try 
+	        {	
+	        	con = DbConnectionManager.getTransactionConnection();
+	            pstmt = con.prepareStatement(INSERT_TRUST_CIRCLE_DOMAIN_ASSOC);
+	            pstmt.setString(1, circle.getId());
+	            pstmt.setString(2, domainName);
+	            pstmt.execute();
+	        }
+	        catch (Exception e) 
+	        {
+	            abortTransaction = true;
+	            throw new TrustCircleException("Failed to add circle " + circleName + " to domain " + domainName, e);
+	        }
+	        finally 
+	        {
+	            DbConnectionManager.closeStatement(pstmt);
+	            DbConnectionManager.closeTransactionConnection(pstmt, con, abortTransaction);
+	        }
+		}
 		
 	}
 
@@ -500,8 +525,32 @@ public class DefaultTrustCircleProvider implements TrustCircleProvider
 	@Override
 	public void deleteDomainsFromCircle(String circleName, Collection<String> domainNames) throws TrustCircleException
 	{
-		// TODO Auto-generated method stub
-		
+		for (String domainName : domainNames)
+		{
+			final TrustCircle circle = this.getTrustCircle(circleName, false, false);
+			
+	        Connection con = null;
+	        PreparedStatement pstmt = null;
+	        boolean abortTransaction = false;
+	        try 
+	        {	
+	        	con = DbConnectionManager.getTransactionConnection();
+	            pstmt = con.prepareStatement(DELETE_TRUST_CIRCLE_DOMAIN_ASSOC);
+	            pstmt.setString(1, circle.getId());
+	            pstmt.setString(2, domainName);
+	            pstmt.execute();
+	        }
+	        catch (Exception e) 
+	        {
+	            abortTransaction = true;
+	            throw new TrustCircleException("Failed to delete circle " + circleName + " from domain " + domainName, e);
+	        }
+	        finally 
+	        {
+	            DbConnectionManager.closeStatement(pstmt);
+	            DbConnectionManager.closeTransactionConnection(pstmt, con, abortTransaction);
+	        }
+		}
 	}
 
 	protected TrustCircle getTrustCircleById(String circleid, boolean loadBundles, boolean loadAnchors) throws TrustCircleException
@@ -610,7 +659,7 @@ public class DefaultTrustCircleProvider implements TrustCircleProvider
 	            else
 	            {
 	            	final DefaultTrustBundleProvider prov = new DefaultTrustBundleProvider();
-	            	return prov.getTrustBundlesById(bundleIds, true);
+	            	return prov.getTrustBundlesByIds(bundleIds, true);
 	            }
 		   }
 	       catch (Exception e) 

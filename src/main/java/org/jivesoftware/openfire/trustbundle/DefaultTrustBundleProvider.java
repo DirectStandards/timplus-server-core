@@ -36,7 +36,7 @@ public class DefaultTrustBundleProvider implements TrustBundleProvider
             "VALUES (?,?,?,?,?,?,?,?)"; 
     
     private static final String UPDATE_TRUST_BUNDLE =
-            "UPDATE ofTrustBundle set bundleName = ?, bundleURL = ?, checkSum = ?, lastRefreshAttempt = ?, lastSuccessfulRefresh = ?,lastRefreshError = ?,"
+            "UPDATE ofTrustBundle set bundleName = ?, bundleURL = ?,"
             + "refreshInterval = ?, signingCertificateData = ? " +
             " where UPPER(bundleName) = ?"; 
     
@@ -91,7 +91,7 @@ public class DefaultTrustBundleProvider implements TrustBundleProvider
 	   return trustBundles;
 	}
 
-	public Collection<TrustBundle> getTrustBundlesById(Collection<String> ids, boolean loadAnchors) throws TrustBundleException
+	public Collection<TrustBundle> getTrustBundlesByIds(Collection<String> ids, boolean loadAnchors) throws TrustBundleException
 	{
         if (ids == null || ids.size() == 0)
         	return Collections.emptyList();
@@ -242,14 +242,10 @@ public class DefaultTrustBundleProvider implements TrustBundleProvider
             pstmt = con.prepareStatement(UPDATE_TRUST_BUNDLE);
             pstmt.setString(1, updatedBundle.getBundleName());
             pstmt.setString(2, updatedBundle.getBundleURL());
-            pstmt.setString(3, updatedBundle.getCheckSum());
-            pstmt.setLong(4, updatedBundle.getLastRefreshAttempt().toEpochMilli());
-            pstmt.setLong(5, updatedBundle.getLastSuccessfulRefresh().toEpochMilli());
-            pstmt.setString(6, updatedBundle.getLastRefreshError().name());
-            pstmt.setInt(7, updatedBundle.getRefreshInterval());
-            pstmt.setBytes(8, updatedBundle.getSigningCertificateData());
+            pstmt.setInt(3, updatedBundle.getRefreshInterval());
+            pstmt.setBytes(4, updatedBundle.getSigningCertificateData());
             
-            pstmt.setString(9, bundleName.toUpperCase());
+            pstmt.setString(5, bundleName.toUpperCase());
             
             pstmt.execute();
         }

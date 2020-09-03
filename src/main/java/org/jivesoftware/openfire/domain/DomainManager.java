@@ -30,7 +30,7 @@ public class DomainManager
 	
     private final Cache<String, Domain> domainCache;
     private final Cache<String, Boolean> remoteDomainCache;
-    private final XMPPServer xmppServer;
+    private XMPPServer xmppServer;
 	
 	static
 	{
@@ -68,13 +68,13 @@ public class DomainManager
         return DomainManagerContainer.instance;
     }
     
-    private DomainManager() 
+    protected DomainManager() 
     {
     	this(XMPPServer.getInstance());
     	
     }
     
-	DomainManager(final XMPPServer xmppServer) 
+	protected DomainManager(final XMPPServer xmppServer) 
     {
 		this.xmppServer = xmppServer;
 		
@@ -107,6 +107,11 @@ public class DomainManager
         DomainEventDispatcher.addListener(domainListener);
     }
     
+	public void setXMPPServer(XMPPServer server)
+	{
+		this.xmppServer = server;
+	}
+	
     public Domain createDomain(String domainName, boolean enabled) throws DomainAlreadyExistsException
     {
     	if (StringUtils.isEmpty(domainName))
@@ -304,5 +309,11 @@ public class DomainManager
     		Log.warn("Tried to remove MUC service " + MultiUserChatManager.toFQDN(MultiUserChatManager.DEFAULT_MUC_SERVICE, domainName) + 
     				" but it didn't exist");
         }
+    }
+    
+    public void clearCaches()
+    {
+    	domainCache.clear();
+    	remoteDomainCache.clear();
     }
 }

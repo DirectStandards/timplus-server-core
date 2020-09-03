@@ -17,6 +17,7 @@
 package org.jivesoftware.openfire.container;
 
 import javax.servlet.*;
+import javax.servlet.ServletRegistration.Dynamic;
 import javax.servlet.descriptor.JspConfigDescriptor;
 import java.io.InputStream;
 import java.net.MalformedURLException;
@@ -382,4 +383,46 @@ public class PluginServletContext implements ServletContext
     {
         return proxy.getVirtualServerName();
     }
+
+	public Dynamic addJspFile(String servletName, String jspFile)
+	{
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	public int getSessionTimeout()
+	{
+		// TODO Auto-generated method stub
+		return 0;
+	}
+
+	public void setSessionTimeout(int sessionTimeout)
+	{
+		// TODO Auto-generated method stub
+		
+	}
+
+	public String getRequestCharacterEncoding()
+	{
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	public void setRequestCharacterEncoding(String encoding)
+	{
+		// TODO Auto-generated method stub
+		
+	}
+
+	public String getResponseCharacterEncoding()
+	{
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	public void setResponseCharacterEncoding(String encoding)
+	{
+		// TODO Auto-generated method stub
+		
+	}
 }

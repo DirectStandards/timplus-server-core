@@ -99,14 +99,9 @@ public class TrustCircleManager
 		}
     }
     
-    public int getTrustCircleCountInDomain(String domain) 
+    public int getTrustCircleCountInDomain(String domain) throws TrustCircleException
     {
-    	return 1;
-    }
-    
-    public Collection<Domain> getTrustCircleDomains(String trustCircle) throws TrustCircleException
-    {
-    	return Collections.emptyList();
+    	return provider.getCirclesByDomain(domain, false, false).size();
     }
     
     public boolean isRegisteredTrustCircle(String circleName)

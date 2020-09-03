@@ -61,7 +61,7 @@
     Collection<Domain> associatedDomains = null;
     try {
     	trustCircle = TrustCircleManager.getInstance().getTrustCircle(circleName, true, true);
-    	associatedDomains = TrustCircleManager.getInstance().getTrustCircleDomains(circleName);
+    	associatedDomains = DomainManager.getInstance().getDomainsByTrustCircle(circleName);
     }
     catch (Exception unfe) {
     }

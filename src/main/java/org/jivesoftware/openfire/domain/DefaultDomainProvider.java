@@ -172,9 +172,12 @@ public class DefaultDomainProvider implements DomainProvider
 		   ResultSet rs = null;
 		   try 
 		   {
+			   final StringBuilder search = new StringBuilder("%").append(searchStr).append("%");
+			   
 			   con = DbConnectionManager.getConnection();
 
-	           pstmt = con.prepareStatement((enabledOnly) ? SEARCH_DOMAINS : SEARCH_ENABLED_DOMAINS);
+	           pstmt = con.prepareStatement((enabledOnly) ? SEARCH_ENABLED_DOMAINS : SEARCH_DOMAINS );
+	           pstmt.setString(1, search.toString());
 	            // Set the fetch size. This will prevent some JDBC drivers from trying
 	            // to load the entire result set into memory.
 	            DbConnectionManager.setFetchSize(pstmt, 500);

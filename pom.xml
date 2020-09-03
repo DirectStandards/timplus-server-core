@@ -15,6 +15,7 @@
     <properties>
         <warSourceDirectory>${basedir}/src/main/webapp</warSourceDirectory>
         <jetty.version>9.4.29.v20200521</jetty.version>
+        <spring-boot.version>2.3.3.RELEASE</spring-boot.version>        
     </properties>
 
     <build>
@@ -101,7 +102,17 @@
 
         </plugins>
     </build>
-
+	<dependencyManagement>
+		<dependencies>
+			<dependency>
+				<groupId>org.springframework.boot</groupId>
+				<artifactId>spring-boot-dependencies</artifactId>
+				<version>${spring-boot.version}</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>		        		
+		</dependencies>
+	</dependencyManagement>
     <dependencies>
         <!-- Ignite Realtime -->
         <dependency>
@@ -379,6 +390,11 @@
             <artifactId>guava</artifactId>
             <version>27.1-jre</version>
         </dependency>
+		<dependency>
+		    <groupId>com.h2database</groupId>
+		    <artifactId>h2</artifactId>
+		    <scope>test</scope>
+		</dependency>        
         <!-- Test Scope -->
         <dependency>
             <groupId>junit</groupId>
@@ -410,7 +426,36 @@
             <version>0.7</version>
             <scope>test</scope>
         </dependency>
-
+        <!-- Spring Boot Test Dependencies -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter</artifactId>
+            <version>${spring-boot.version}</version>
+            <scope>test</scope>			
+		</dependency>        
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-jdbc</artifactId>
+            <version>${spring-boot.version}</version>
+            <scope>test</scope>			
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-data-jpa</artifactId>
+            <version>${spring-boot.version}</version>
+            <scope>test</scope>			
+		</dependency>	
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-test</artifactId>
+            <version>${spring-boot.version}</version>
+            <scope>test</scope>	
+		</dependency>	
+		<dependency>
+			<groupId>org.flywaydb</groupId>
+			<artifactId>flyway-core</artifactId>
+			<scope>test</scope>	
+		</dependency>						
     </dependencies>
 
     <repositories>
@@ -433,5 +478,20 @@
             <url>https://igniterealtime.org/archiva/repository/maven/</url>
         </repository>
     </repositories>
+
+	<distributionManagement>
+        <snapshotRepository>
+            <id>sonatype-snapshot</id>
+            <name>Sonatype OSS Maven SNAPSHOT Repository</name>
+            <url>https://oss.sonatype.org/content/repositories/snapshots/</url>
+            <uniqueVersion>false</uniqueVersion>
+         </snapshotRepository>
+         <repository>
+            <id>sonatype-release</id>
+            <name>Sonatype OSS Maven Release Repositor</name>
+            <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+            <uniqueVersion>false</uniqueVersion>
+         </repository>				
+	</distributionManagement>
 
 </project>
