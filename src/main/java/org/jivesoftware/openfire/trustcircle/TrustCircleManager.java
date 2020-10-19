@@ -20,6 +20,8 @@ public class TrustCircleManager
 	public static final SystemProperty<Class> TRUST_CIRCLE_PROVIDER;
 	private static TrustCircleProvider provider;
 	
+	private static TrustCircleManager INSTANCE;
+	
 	static
 	{
 		TRUST_CIRCLE_PROVIDER = Builder.ofType(Class.class)
@@ -28,11 +30,6 @@ public class TrustCircleManager
 				.build();
 	
 	}
-	
-    private static class TrustCircleManagerContainer 
-    {
-        private static TrustCircleManager instance = new TrustCircleManager();
-    }
 	
     private static void initProvider(final Class<?> clazz) 
     {
@@ -50,9 +47,12 @@ public class TrustCircleManager
         }
     }
     
-    public static TrustCircleManager getInstance() 
+    public static synchronized TrustCircleManager getInstance() 
     {
-        return TrustCircleManagerContainer.instance;
+        if (INSTANCE == null)
+        	INSTANCE = new TrustCircleManager();
+        
+        return INSTANCE;
     }
     
     private TrustCircleManager() 
