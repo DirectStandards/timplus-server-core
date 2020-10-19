@@ -30,7 +30,7 @@ public class DefaultTrustBundleProvider_updateTrustBundleAttributesTest extends 
 	@Test
 	public void testUpdateBundleAttributes_bundleExist_assertUpdated() throws Exception
 	{
-		final File bundleLocation = new File("./src/test/resources/bundles/signedBundle.p7b");
+		final File bundleLocation = new File("./src/test/resources/bundles/signedbundle.p7b");
 		
 		final TrustBundle updateBundle = trustBundleProv.getTrustBundle("JUnit Bundle");
 		updateBundle.setBundleName("Junit Bundle 2");
