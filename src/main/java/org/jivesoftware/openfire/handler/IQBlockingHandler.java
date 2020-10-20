@@ -21,6 +21,7 @@ import org.dom4j.DocumentHelper;
 import org.dom4j.Element;
 import org.dom4j.QName;
 import org.jivesoftware.openfire.IQHandlerInfo;
+import org.jivesoftware.openfire.PacketException;
 import org.jivesoftware.openfire.PresenceManager;
 import org.jivesoftware.openfire.XMPPServer;
 import org.jivesoftware.openfire.auth.UnauthorizedException;
@@ -135,7 +136,8 @@ public class IQBlockingHandler extends IQHandler implements ServerFeaturesProvid
 
                 addToBlockList( user, toBlocks );
                 pushBlocklistUpdates( user, toBlocks );
-
+                sendUnavailablePresence(user, toBlocks);
+                
                 return IQ.createResultIQ( iq );
             }
             else if ( iq.getType().equals( IQ.Type.set ) && "unblock".equals( iq.getChildElement().getName() ) )
@@ -222,15 +224,66 @@ public class IQBlockingHandler extends IQHandler implements ServerFeaturesProvid
                 if ( presenceManager.canProbePresence( recipient, user.getUsername() , user.getDomain() ) )
                 {
                     presenceManager.probePresence( recipient.asBareJID(), XMPPServer.getInstance().createJID( user.getUsername(), user.getDomain(), null ) );
-                }
+                }    
+                
+                /*
+                 * Do a presence probe of each unblocked contact
+                 * so the client can receive a presence notification
+                 */
+            	final Presence presencePacket = new Presence();
+                presencePacket.setType(Presence.Type.probe);
+                presencePacket.setTo(recipient);
+                presencePacket.setFrom(XMPPServer.getInstance().createJID( user.getUsername(), user.getDomain(), null));
+                XMPPServer.getInstance().getPacketDeliverer().deliver(presencePacket);
             }
-            catch ( UserNotFoundException e )
+            catch ( UserNotFoundException | PacketException  | UnauthorizedException e)
             {
                 Log.error( "Unable to send presence information of user '{}' to unblocked entity '{}' as local user is not found.", user.getUsername(), recipient );
             }
         }
     }
 
+    /**
+     * Sends an unavailable presence information of the local user to the a collection of JIDs, if appropriate.
+     *
+     * @param user       The use for which to send presence (cannot be null).
+     * @param recipients The entities to which information is send (cannot be null, can be empty)
+     */
+    private void sendUnavailablePresence( User user, List<JID> recipients )
+    {
+        if ( recipients.isEmpty() )
+        {
+            return;
+        }
+
+        final PresenceManager presenceManager = XMPPServer.getInstance().getPresenceManager();
+        final Presence presence = presenceManager.getPresence( user );
+        if ( presence == null )
+        {
+            return;
+        }
+
+        for ( final JID recipient : recipients )
+        {
+            try
+            {
+                if ( presenceManager.canProbePresence( recipient, user.getUsername() , user.getDomain() ) )
+                {
+                	// send an unavailalbe packet
+                	final Presence presencePacket = new Presence();
+                    presencePacket.setType(Presence.Type.unavailable);
+                    presencePacket.setTo(recipient);
+                    presencePacket.setFrom(XMPPServer.getInstance().createJID( user.getUsername(), user.getDomain(), null));
+                    XMPPServer.getInstance().getPacketDeliverer().deliver(presencePacket);
+                }
+            }
+            catch ( UserNotFoundException | PacketException  |UnauthorizedException e)
+            {
+                Log.error( "Unable to send unavailalbe presence information of user '{}' to unblocked entity '{}' as local user is not found.", user.getUsername(), recipient );
+            } 
+        }
+    }    
+    
     /**
      * Adds a collection of JIDs to the blocklist of the provided user.
      *

@@ -53,7 +53,6 @@ public class IQRouter extends BasicModule {
 
     private RoutingTable routingTable;
     private MulticastRouter multicastRouter;
-    private String serverName;
     private List<IQHandler> iqHandlers = new ArrayList<>();
     private Map<String, IQHandler> namespace2Handlers = new ConcurrentHashMap<>();
     private Map<String, IQResultListener> resultListeners = new ConcurrentHashMap<>();
@@ -248,7 +247,6 @@ public class IQRouter extends BasicModule {
     public void initialize(XMPPServer server) {
         super.initialize(server);
         TaskEngine.getInstance().scheduleAtFixedRate(new TimeoutTask(), 5000, 5000);
-        serverName = server.getServerInfo().getXMPPDomain();
         routingTable = server.getRoutingTable();
         multicastRouter = server.getMulticastRouter();
         iqHandlers.addAll(server.getIQHandlers());
@@ -316,7 +314,9 @@ public class IQRouter extends BasicModule {
         try {
             // Check for registered components, services or remote servers
             if (recipientJID != null &&
-                    (routingTable.hasComponentRoute(recipientJID) || routingTable.hasServerRoute(new DomainPair(packet.getFrom().getDomain(), recipientJID.getDomain())))) {
+                    (routingTable.hasComponentRoute(recipientJID) || 
+                    		(packet.getFrom() != null && routingTable.hasServerRoute(new DomainPair(packet.getFrom().getDomain(), recipientJID.getDomain()))))) 
+            {
                 // A component/service/remote server was found that can handle the Packet
                 routingTable.routePacket(recipientJID, packet, false);
                 return;
