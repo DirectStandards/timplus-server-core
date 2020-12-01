@@ -46,7 +46,7 @@ public class CertificateManager
 	static
 	{
 		CERTIFICATE_PROVIDER = Builder.ofType(Class.class)
-				.setKey("provider.certificate.className").setBaseClass(CertificateManager.class)
+				.setKey("provider.certificate.className").setBaseClass(CertificateProvider.class)
 				.setDefaultValue(DefaultCertificateProvider.class).addListener(CertificateManager::initProvider).setDynamic(true)
 				.build();
 	
