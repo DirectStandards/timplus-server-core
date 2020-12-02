@@ -25,7 +25,7 @@ public class TrustCircleManager
 	static
 	{
 		TRUST_CIRCLE_PROVIDER = Builder.ofType(Class.class)
-				.setKey("provider.trustcircle.className").setBaseClass(TrustBundleManager.class)
+				.setKey("provider.trustcircle.className").setBaseClass(TrustCircleProvider.class)
 				.setDefaultValue(DefaultTrustCircleProvider.class).addListener(TrustCircleManager::initProvider).setDynamic(true)
 				.build();
 	

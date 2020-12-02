@@ -29,7 +29,7 @@ public class TrustBundleManager
 	static
 	{
 		TRUST_BUNDLE_PROVIDER = Builder.ofType(Class.class)
-				.setKey("provider.trustbundle.className").setBaseClass(TrustBundleManager.class)
+				.setKey("provider.trustbundle.className").setBaseClass(TrustBundleProvider.class)
 				.setDefaultValue(DefaultTrustBundleProvider.class).addListener(TrustBundleManager::initProvider).setDynamic(true)
 				.build();
 		

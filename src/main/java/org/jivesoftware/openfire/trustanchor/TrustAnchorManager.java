@@ -21,7 +21,7 @@ public class TrustAnchorManager
 	static
 	{
 		TRUST_ANCHOR_PROVIDER = Builder.ofType(Class.class)
-				.setKey("provider.trustanchor.className").setBaseClass(TrustAnchorManager.class)
+				.setKey("provider.trustanchor.className").setBaseClass(TrustAnchorProvider.class)
 				.setDefaultValue(DefaultTrustAnchorProvider.class).addListener(TrustAnchorManager::initProvider).setDynamic(true)
 				.build();
 	
