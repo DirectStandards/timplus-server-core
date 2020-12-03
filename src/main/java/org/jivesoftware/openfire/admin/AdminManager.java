@@ -216,7 +216,9 @@ public class AdminManager {
      * @return True or false if user is an admin.
      */
     public boolean isUserAdmin(String username, String domain, boolean allowAdminIfEmpty) {
-        if (adminList == null) {
+        username = JID.unescapeNode(username);
+    	
+    	if (adminList == null) {
             loadAdminList();
         }
         if (allowAdminIfEmpty && adminList.isEmpty()) {

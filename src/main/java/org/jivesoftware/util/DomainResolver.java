@@ -24,7 +24,7 @@ public class DomainResolver
 		}
 	}
 	
-	public static String resolveUsername(String username)
+	public static String resolveUsernameLocalPart(String username)
 	{
 		if (username.contains("@"))
 			return username.substring(0, username.indexOf("@"));

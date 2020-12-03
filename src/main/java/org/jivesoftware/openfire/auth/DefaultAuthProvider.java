@@ -29,7 +29,6 @@ import javax.security.sasl.SaslException;
 import javax.xml.bind.DatatypeConverter;
 
 import org.jivesoftware.database.DbConnectionManager;
-import org.jivesoftware.openfire.XMPPServer;
 import org.jivesoftware.openfire.domain.DomainManager;
 import org.jivesoftware.openfire.sasl.ScramSha1SaslServer;
 import org.jivesoftware.openfire.user.UserNotFoundException;
@@ -162,15 +161,10 @@ public class DefaultAuthProvider implements AuthProvider {
             // Check that the specified domain matches the server's domain
             int index = username.indexOf("@");
             String domain = username.substring(index + 1);
-            if (DomainManager.getInstance().isRegisteredDomain(domain)) 
+            if (!DomainManager.getInstance().isRegisteredDomain(domain)) 
             {
-                username = username.substring(0, index);
-            } 
-            else 
-            {
-                // Unknown domain. Return authentication failed.
                 throw new UnauthorizedException();
-            }
+            } 
         }
         try {
             if (!checkPassword(username, password)) {
@@ -196,15 +190,10 @@ public class DefaultAuthProvider implements AuthProvider {
             // Check that the specified domain matches the server's domain
             int index = username.indexOf("@");
             String domain = username.substring(index + 1);
-            if (DomainManager.getInstance().isRegisteredDomain(domain)) 
+            if (!DomainManager.getInstance().isRegisteredDomain(domain)) 
             {
-                username = username.substring(0, index);
-            } 
-            else 
-            {
-                // Unknown domain.
                 throw new UserNotFoundException();
-            }
+            } 
         }
         try {
             con = DbConnectionManager.getConnection();
@@ -245,15 +234,10 @@ public class DefaultAuthProvider implements AuthProvider {
             // Check that the specified domain matches the server's domain
             int index = username.indexOf("@");
             String domain = username.substring(index + 1);
-            if (DomainManager.getInstance().isRegisteredDomain(domain)) 
+            if (!DomainManager.getInstance().isRegisteredDomain(domain)) 
             {
-                username = username.substring(0, index);
-            } 
-            else 
-            {
-                // Unknown domain.
                 throw new UserNotFoundException();
-            }
+            } 
         }
         try {
             con = DbConnectionManager.getConnection();
@@ -320,15 +304,10 @@ public class DefaultAuthProvider implements AuthProvider {
             // Check that the specified domain matches the server's domain
             int index = username.indexOf("@");
             String domain = username.substring(index + 1);
-            if (DomainManager.getInstance().isRegisteredDomain(domain)) 
+            if (!DomainManager.getInstance().isRegisteredDomain(domain)) 
             {
-                username = username.substring(0, index);
-            } 
-            else 
-            {
-                // Unknown domain.
                 throw new UserNotFoundException();
-            }
+            } 
         }
         
         // Store the salt and salted password so SCRAM-SHA-1 SASL auth can be used later.

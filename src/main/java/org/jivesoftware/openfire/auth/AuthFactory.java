@@ -28,6 +28,7 @@ import org.jivesoftware.util.StringUtils;
 import org.jivesoftware.util.SystemProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.xmpp.packet.JID;
 
 /**
  * Pluggable authentication service. Users of Openfire that wish to change the AuthProvider
@@ -142,6 +143,8 @@ public class AuthFactory {
      */
     public static String getPassword(String username) throws UserNotFoundException,
             UnsupportedOperationException {
+    	
+    	username = JID.unescapeNode(username);
         return authProvider.getPassword(username.toLowerCase());
     }
 
@@ -158,7 +161,10 @@ public class AuthFactory {
      * @throws InternalUnauthenticatedException if there is a problem authentication Openfire itself into the user and group system
      */
     public static void setPassword(String username, String password) throws UserNotFoundException, 
-            UnsupportedOperationException, ConnectionException, InternalUnauthenticatedException {
+            UnsupportedOperationException, ConnectionException, InternalUnauthenticatedException 
+        {
+    	
+    	    username = JID.unescapeNode(username);
             authProvider.setPassword(username, password);
         }
 
@@ -176,11 +182,15 @@ public class AuthFactory {
      * @throws InternalUnauthenticatedException if there is a problem authentication Openfire itself into the user and group system
      */
     public static AuthToken authenticate(String username, String password)
-            throws UnauthorizedException, ConnectionException, InternalUnauthenticatedException {
-        if (LockOutManager.getInstance().isAccountDisabled(username)) {
+            throws UnauthorizedException, ConnectionException, InternalUnauthenticatedException 
+    {
+        username = JID.unescapeNode(username);
+    	
+    	if (LockOutManager.getInstance().isAccountDisabled(username)) {
             LockOutManager.getInstance().recordFailedLogin(username);
             throw new UnauthorizedException();
         }
+        
         authProvider.authenticate(username, password);
         return AuthToken.generateUserToken( username );
     }

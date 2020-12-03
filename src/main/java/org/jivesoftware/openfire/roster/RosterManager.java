@@ -871,7 +871,7 @@ public class RosterManager extends BasicModule implements GroupEventListener, Us
         if ("everybody".equals(showInRoster)) {
             // Add all users in the system
             for (String username : UserManager.getInstance().getUsernames()) {
-                users.add(server.createJID(DomainResolver.resolveUsername(username), DomainResolver.resolveUserDomain(username), null, true));
+                users.add(server.createJID(DomainResolver.resolveUsernameLocalPart(username), DomainResolver.resolveUserDomain(username), null, true));
             }
             // Add all logged users. We don't need to add all users in the system since only the
             // logged ones will be affected.
@@ -908,7 +908,7 @@ public class RosterManager extends BasicModule implements GroupEventListener, Us
             if ("everybody".equals(showInRoster)) {
                 // Add all users in the system
                 for (String username : UserManager.getInstance().getUsernames()) {
-                    users.add(server.createJID(DomainResolver.resolveUsername(username), DomainResolver.resolveUserDomain(username), null, true));
+                    users.add(server.createJID(DomainResolver.resolveUsernameLocalPart(username), DomainResolver.resolveUserDomain(username), null, true));
                 }
             }
             else {

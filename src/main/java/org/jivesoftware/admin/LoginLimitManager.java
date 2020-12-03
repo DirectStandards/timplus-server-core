@@ -25,6 +25,7 @@ import org.jivesoftware.util.JiveGlobals;
 import org.jivesoftware.util.TaskEngine;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.xmpp.packet.JID;
 
 /**
  * Handles recording admin console login attempts and handling temporary lockouts where necessary.
@@ -103,7 +104,9 @@ public class LoginLimitManager {
      * @return True if the login attempt limit has been hit.
      */
     public boolean hasHitConnectionLimit(String username, String address) {
-        if (attemptsPerIP.get(address) != null && attemptsPerIP.get(address) > maxAttemptsPerIP) {
+    	username = JID.unescapeNode(username);
+    	
+    	if (attemptsPerIP.get(address) != null && attemptsPerIP.get(address) > maxAttemptsPerIP) {
             return true;
         }
         if (attemptsPerUsername.get(username) != null && attemptsPerUsername.get(username) > maxAttemptsPerUsername) {
@@ -120,7 +123,9 @@ public class LoginLimitManager {
      * @param address IP address that is attempting.
      */
     public void recordFailedAttempt(String username, String address) {
-        Log.warn("Failed admin console login attempt by "+username+" from "+address);
+    	username = JID.unescapeNode(username);
+    	
+    	Log.warn("Failed admin console login attempt by "+username+" from "+address);
 
         Long cnt = (long)0;
         if (attemptsPerIP.get(address) != null) {
@@ -156,7 +161,9 @@ public class LoginLimitManager {
      * @param address IP address that is attempting.
      */
     public void recordSuccessfulAttempt(String username, String address) {
-        attemptsPerIP.remove(address);
+    	username = JID.unescapeNode(username);
+    	
+    	attemptsPerIP.remove(address);
         attemptsPerUsername.remove(username);
         securityAuditManager.logEvent(username, "Successful admin console login attempt", "The user logged in successfully to the admin console from address " + address + ". ");
     }

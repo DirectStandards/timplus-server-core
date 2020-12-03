@@ -38,6 +38,7 @@ import org.jivesoftware.openfire.event.UserEventDispatcher;
 import org.jivesoftware.openfire.event.UserEventListener;
 import org.jivesoftware.openfire.user.property.DefaultUserPropertyProvider;
 import org.jivesoftware.openfire.user.property.UserPropertyProvider;
+import org.jivesoftware.util.DomainResolver;
 import org.jivesoftware.util.StringUtils;
 import org.jivesoftware.util.SystemProperty;
 import org.jivesoftware.util.cache.Cache;
@@ -47,9 +48,6 @@ import org.slf4j.LoggerFactory;
 import org.xmpp.component.IQResultListener;
 import org.xmpp.packet.IQ;
 import org.xmpp.packet.JID;
-
-import gnu.inet.encoding.Stringprep;
-import gnu.inet.encoding.StringprepException;
 
 /**
  * Manages users, including loading, creating and deleting.
@@ -193,8 +191,10 @@ public final class UserManager {
     public User createUser(String username, final String password, final String name, final String email, String domain)
             throws UserAlreadyExistsException, DomainNotFoundException
     {
-    	
-    	
+    	username = JID.unescapeNode(username);
+    	// check to see if a domain exists
+    	if (username.indexOf("@") == -1)
+    		username = (username + "@" + domain.toLowerCase());
     	
         if (provider.isReadOnly()) {
             throw new UnsupportedOperationException("User provider is read-only.");
@@ -209,27 +209,16 @@ public final class UserManager {
             throw new IllegalArgumentException("Null or empty domain.");
         }    
         
-        try {
-            username = Stringprep.nodeprep(username);
-        }
-        catch (final StringprepException se) {
-            throw new IllegalArgumentException("Invalid username: " + username,  se);
-        }
-        
         domain = domain.toLowerCase();
         if (!DomainManager.getInstance().isRegisteredDomain(domain))
         	throw new DomainNotFoundException("Domain " + domain  + " is not registered in this server.");
         
+        // make sure the domain on the username and the domain passed in match
+        if (!DomainResolver.resolveUserDomain(username).equals(domain))
+        {
+        	throw new IllegalArgumentException("Username domain does not match requested domain.");
+        }
         
-        // Make sure that the username is valid.
-        /*
-        try {
-            username = Stringprep.nodeprep(username);
-        }
-        catch (final StringprepException se) {
-            throw new IllegalArgumentException("Invalid username: " + username,  se);
-        }
-        */
         try
         {
         	username = URLDecoder.decode(username, StandardCharsets.UTF_8.toString());
@@ -266,13 +255,6 @@ public final class UserManager {
         }
 
         final String username = user.getUsername();
-        // Make sure that the username is valid.
-        try {
-            /*username =*/ Stringprep.nodeprep(username);
-        }
-        catch (final StringprepException se) {
-            throw new IllegalArgumentException("Invalid username: " + username,  se);
-        }
 
         // Fire event.
         final Map<String,Object> params = Collections.emptyMap();

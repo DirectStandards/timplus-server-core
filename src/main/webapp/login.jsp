@@ -148,12 +148,9 @@
         catch (UnauthorizedException ue) {
             Log.debug(ue);
             LoginLimitManager.getInstance().recordFailedAttempt(username, request.getRemoteAddr());
-            // Provide a special message if the user provided something containing @
-            if (username.contains("@")){
-                errors.put("unauthorized", LocaleUtils.getLocalizedString("login.failed.lookslikeemail"));
-            } else {
-                errors.put("unauthorized", LocaleUtils.getLocalizedString("login.failed.unauthorized"));
-            }
+
+            errors.put("unauthorized", LocaleUtils.getLocalizedString("login.failed.unauthorized"));
+
         }
     }
 

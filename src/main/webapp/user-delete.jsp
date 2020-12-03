@@ -23,6 +23,7 @@
     errorPage="error.jsp"
 %>
 <%@ page import="org.jivesoftware.openfire.user.UserManager" %>
+<%@ page import="org.jivesoftware.openfire.XMPPServer" %>
 <%@ page import="org.jivesoftware.util.ParamUtils" %>
 <%@ page import="org.jivesoftware.util.StringUtils" %>
 <%@ page import="org.jivesoftware.util.CookieUtils" %>
@@ -68,15 +69,23 @@
 
         if (!SecurityAuditManager.getSecurityAuditProvider().blockUserEvents()) {
             // Log the event
-            JID userAddress = new JID(username, webManager.getServerInfo().getXMPPDomain(), null);
+            JID userAddress =  XMPPServer.getInstance().createJID(username, user.getDomain(), null);
             webManager.logEvent("deleted user "+username, "full jid was "+userAddress);
         }
         // Close the user's connection
         final StreamError error = new StreamError(StreamError.Condition.not_authorized);
-        for (ClientSession sess : webManager.getSessionManager().getSessions(user.getUsername()) )
+        
+        try
         {
-            sess.deliverRawText(error.toXML());
-            sess.close();
+	        for (ClientSession sess : webManager.getSessionManager().getSessions(user.getUsername()) )
+	        {
+	            sess.deliverRawText(error.toXML());
+	            sess.close();
+	        }
+        }
+        catch (Exception e)
+        {
+        	
         }
         // Deleted your own user account, force login
         if (username.equals(webManager.getAuthToken().getUsername())){
