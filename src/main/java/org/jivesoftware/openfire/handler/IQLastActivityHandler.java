@@ -76,7 +76,7 @@ public class IQLastActivityHandler extends IQHandler implements ServerFeaturesPr
 
         // If the 'to' attribute is null, treat the IQ on behalf of the account from which received the stanza
         // in accordance with RFC 6120 § 10.3.3.
-        String username = packet.getTo() == null ? packet.getFrom().getNode() : packet.getTo().getNode();
+        String username = packet.getTo() == null ? packet.getFrom().toBareJID() : packet.getTo().toBareJID();
         String domain = packet.getTo() == null ? packet.getFrom().getDomain() : packet.getTo().getDomain();
         
         try {

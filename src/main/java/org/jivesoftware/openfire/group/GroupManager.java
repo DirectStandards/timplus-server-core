@@ -502,8 +502,8 @@ public class GroupManager {
                 groupNames = getSharedGroupsForUserFromCache(userName);
                 if (groupNames == null) {
                     // assume this is a local user
-                    groupNames = new HashSet<>(provider.getSharedGroupNames(new JID(userName,
-                            XMPPServer.getInstance().getServerInfo().getXMPPDomain(), null)));
+                    groupNames = new HashSet<>(provider.getSharedGroupNames(
+                    		XMPPServer.getInstance().createJID(userName, domain, null)));
                     saveSharedGroupsForUserInCache(userName, groupNames);
                 }
             }
@@ -610,7 +610,7 @@ public class GroupManager {
     public Collection<Group> getGroups(JID user) {
         HashSet<String> groupNames = getUserGroupsFromCache(user);
         if (groupNames == null) {
-            synchronized((user.getNode() + MUTEX_SUFFIX_USER).intern()) {
+            synchronized((user.asBareJID() + MUTEX_SUFFIX_USER).intern()) {
                 groupNames = getUserGroupsFromCache(user);
                 if (groupNames == null) {
                     groupNames = new HashSet<>(provider.getGroupNames(user));
@@ -698,7 +698,7 @@ public class GroupManager {
             // remove cache for getSharedGroups
             if (XMPPServer.getInstance().isLocal(user)) {
                 synchronized (USER_SHARED_GROUPS_KEY) {
-                    clearSharedGroupsForUserCache(user.getNode());
+                    clearSharedGroupsForUserCache(user.toBareJID());
                 }
             }
         }

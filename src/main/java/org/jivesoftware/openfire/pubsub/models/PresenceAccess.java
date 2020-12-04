@@ -56,7 +56,7 @@ public class PresenceAccess extends AccessModel {
             // Check that the node owner is a local user
             if (server.isLocal(nodeOwner)) {
                 try {
-                    Roster roster = server.getRosterManager().getRoster(nodeOwner.getNode(), nodeOwner.getDomain());
+                    Roster roster = server.getRosterManager().getRoster(nodeOwner.toBareJID(), nodeOwner.getDomain());
                     RosterItem item = roster.getRosterItem(owner);
                     // Check that the subscriber is subscribe to the node owner's presence
                     return item != null && (RosterItem.SUB_BOTH == item.getSubStatus() ||

@@ -34,6 +34,7 @@ import org.jivesoftware.openfire.auth.AuthFactory;
 import org.jivesoftware.openfire.auth.ConnectionException;
 import org.jivesoftware.openfire.auth.InternalUnauthenticatedException;
 import org.jivesoftware.openfire.auth.ScramUtils;
+import org.jivesoftware.openfire.session.LocalSession;
 import org.jivesoftware.openfire.user.UserNotFoundException;
 import org.jivesoftware.util.SystemProperty;
 import org.slf4j.Logger;
@@ -44,7 +45,8 @@ import org.slf4j.LoggerFactory;
  *
  * @author Richard Midwinter
  */
-public class ScramSha1SaslServer implements SaslServer {
+public class ScramSha1SaslServer implements SaslServer, SessionAwareSaslServer 
+{
     public static final SystemProperty<Integer> ITERATION_COUNT = SystemProperty.Builder.ofType(Integer.class)
         .setKey("sasl.scram-sha-1.iteration-count")
         .setDefaultValue(ScramUtils.DEFAULT_ITERATION_COUNT)
@@ -61,7 +63,9 @@ public class ScramSha1SaslServer implements SaslServer {
     private String serverFirstMessage;
     private String clientFirstMessageBare;
     private SecureRandom random = new SecureRandom();
-
+    private LocalSession localSession;
+    
+    
     private enum State {
         INITIAL,
         IN_PROGRESS,
@@ -152,6 +156,9 @@ public class ScramSha1SaslServer implements SaslServer {
 //        String authzId = m.group(4);
         clientFirstMessageBare = m.group(5);
         username = m.group(6);
+        if (localSession != null)
+        	username += "@" + localSession.getServerName();
+        
         String clientNonce = m.group(7);
         nonce = clientNonce + UUID.randomUUID().toString();
 
@@ -364,4 +371,11 @@ public class ScramSha1SaslServer implements SaslServer {
             return DatatypeConverter.parseBase64Binary( storedKey );
         }
     }
+
+	@Override
+	public void setLocalSession(LocalSession session) 
+	{
+		this.localSession = session;
+		
+	}
 }

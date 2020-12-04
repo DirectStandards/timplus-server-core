@@ -18,6 +18,7 @@ package org.jivesoftware.openfire.auth;
 
 import org.jivesoftware.openfire.XMPPServerInfo;
 import org.jivesoftware.openfire.user.UserManager;
+import org.jivesoftware.util.DomainResolver;
 import org.jivesoftware.util.JiveGlobals;
 
 /**
@@ -78,12 +79,9 @@ public class AuthToken {
             this.username = null;
             return;
         }
-        int index = jid.indexOf("@");
-        if (index > -1) {
-            this.username = jid.substring(0,index);
-        } else {
-            this.username = jid;
-        }
+
+        this.username = jid;
+
     }
 
     /**
@@ -100,12 +98,9 @@ public class AuthToken {
             this.username = null;
             return;
         }
-        int index = jid.indexOf("@");
-        if (index > -1) {
-            this.username = jid.substring(0,index);
-        } else {
-            this.username = jid;
-        }
+
+        this.username = jid;
+
     }
 
     /**
@@ -125,8 +120,9 @@ public class AuthToken {
      * @deprecated As Openfire serves only one domain, there's no need for a domain-specific token. Use {@link XMPPServerInfo#getXMPPDomain()} instead.
      */
     @Deprecated
-    public String getDomain() {
-        return XMPPServerInfo.XMPP_DOMAIN.getValue();
+    public String getDomain() 
+    {
+        return DomainResolver.resolveUserDomain(username);
     }
 
     /**

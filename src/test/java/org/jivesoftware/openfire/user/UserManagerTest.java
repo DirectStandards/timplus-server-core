@@ -70,21 +70,6 @@ public class UserManagerTest {
         userManager.createUser(USER_ID, "change me", "Test User Name", "test-email@example.com", "example.com");
     }
 
-    @Test
-    public void isRegisteredUserWillReturnTrueForLocalUsers() {
-
-        final boolean result = userManager.isRegisteredUser(new JID(USER_ID, Fixtures.XMPP_DOMAIN, null));
-
-        assertThat(result, is(true));
-    }
-
-    @Test
-    public void isRegisteredUserWillReturnFalseForLocalNonUsers() {
-
-        final boolean result = userManager.isRegisteredUser(new JID("unknown-user", Fixtures.XMPP_DOMAIN, null));
-
-        assertThat(result, is(false));
-    }
 
     @Test
     public void isRegisteredUserWillReturnTrueForRemoteUsers() {

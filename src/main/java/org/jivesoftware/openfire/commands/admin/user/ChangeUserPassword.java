@@ -72,7 +72,7 @@ public class ChangeUserPassword extends AdHocCommand {
         // Get requested group
         User user;
         try {
-            user = UserManager.getInstance().getUser(account.getNode());
+            user = UserManager.getInstance().getUser(account.toBareJID());
         } catch (UserNotFoundException e) {
             // Group not found
             note.addAttribute("type", "error");

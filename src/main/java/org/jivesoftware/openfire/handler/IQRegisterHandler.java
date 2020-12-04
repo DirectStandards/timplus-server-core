@@ -189,7 +189,7 @@ public class IQRegisterHandler extends IQHandler implements ServerFeaturesProvid
                 if (session.getStatus() == Session.STATUS_AUTHENTICATED) {
                     try {
 
-                        User user = userManager.getUser(session.getUsername().getNode());
+                        User user = userManager.getUser(session.getUsername().toBareJID());
                         Element currentRegistration = probeResult.createCopy();
                         currentRegistration.addElement("registered");
                         currentRegistration.element("username").setText(user.getUsername());
@@ -243,7 +243,7 @@ public class IQRegisterHandler extends IQHandler implements ServerFeaturesProvid
                     else {
                         if (session.getStatus() == Session.STATUS_AUTHENTICATED) {
 
-                            User user = userManager.getUser(session.getUsername().getNode());
+                            User user = userManager.getUser(session.getUsername().toBareJID());
                             // Delete the user
                             userManager.deleteUser(user);
                             // Delete the roster of the user
@@ -351,7 +351,7 @@ public class IQRegisterHandler extends IQHandler implements ServerFeaturesProvid
                         else {
                         	final String domain = session.getUsername().getDomain();
 
-                            User user = userManager.getUser(session.getUsername().getNode());
+                            User user = userManager.getUser(session.getUsername().toBareJID());
                             if (user.getUsername().equalsIgnoreCase(username)) {
                                 if (password != null && password.trim().length() > 0) {
                                     user.setPassword(password);

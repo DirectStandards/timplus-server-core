@@ -29,6 +29,7 @@ import org.jivesoftware.util.cache.CannotCalculateSizeException;
 import org.jivesoftware.util.cache.ExternalizableUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.xmpp.packet.JID;
 import org.xmpp.resultsetmanagement.Result;
 
 import java.io.Externalizable;
@@ -416,6 +417,20 @@ public class User implements Cacheable, Externalizable, Result {
         return size;
     }
 
+    public JID getJID()
+    {
+    	final int idx = getUsername().indexOf("@");
+    	String jid;
+    	if (idx > -1)
+    	{
+    		jid = getUsername();
+    	}
+    	else
+    		jid = getUsername() + "@" + getDomain();
+    	
+    	return new JID(jid);
+    }
+    
     @Override
     public String toString() {
         return new StringBuilder(username).append("@").append(domain).toString();

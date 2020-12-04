@@ -103,7 +103,7 @@
     final String searchName = ParamUtils.getStringParameter(request, "searchName", "");
     if(!searchName.trim().isEmpty()) {
         final String searchCriteria = searchName.trim();
-        filter = filter.and(clientSession -> StringUtils.containsIgnoringCase(clientSession.getAddress().getNode(), searchCriteria));
+        filter = filter.and(clientSession -> StringUtils.containsIgnoringCase(clientSession.getAddress().toBareJID(), searchCriteria));
     }
     final String searchResource = ParamUtils.getStringParameter(request, "searchResource", "");
     if(!searchResource.trim().isEmpty()) {

@@ -81,7 +81,7 @@ public class UserProperties extends AdHocCommand {
             User user;
             try {
                 JID jid = new JID(account);
-                user = manager.getUser(jid.getNode());
+                user = manager.getUser(jid.toBareJID());
             }
             catch (Exception ex) {
                 continue;

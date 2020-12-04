@@ -243,7 +243,7 @@ public class PrivacyList implements Cacheable, Externalizable {
             if (newItem.isRosterRequired()) {
                 Roster roster = getRoster();
                 if (roster == null) {
-                    Log.warn("Privacy item removed since roster of user was not found: " + userJID.getNode());
+                    Log.warn("Privacy item removed since roster of user was not found: " + userJID.toBareJID());
                     items.remove(newItem);
                 }
             }
@@ -258,7 +258,7 @@ public class PrivacyList implements Cacheable, Externalizable {
 
     private Roster getRoster() {
         try {
-            return XMPPServer.getInstance().getRosterManager().getRoster(userJID.getNode(), userJID.getDomain());
+            return XMPPServer.getInstance().getRosterManager().getRoster(userJID.toBareJID(), userJID.getDomain());
         } catch (UserNotFoundException e) {
             Log.warn("Roster not found for user: " + userJID);
         }

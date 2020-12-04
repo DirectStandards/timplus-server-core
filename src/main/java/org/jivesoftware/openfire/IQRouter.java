@@ -337,9 +337,9 @@ public class IQRouter extends BasicModule {
                 }
                 else {
                     // Check if communication to local users is allowed
-                    if (recipientJID != null && userManager.isRegisteredUser(recipientJID.getNode())) {
+                    if (recipientJID != null && userManager.isRegisteredUser(recipientJID.toBareJID())) {
                         PrivacyList list =
-                                PrivacyListManager.getInstance().getDefaultPrivacyList(recipientJID.getNode(), recipientJID.getDomain());
+                                PrivacyListManager.getInstance().getDefaultPrivacyList(recipientJID.toBareJID(), recipientJID.getDomain());
                         if (list != null && list.shouldBlockPacket(packet)) {
                             // Communication is blocked
                             if (IQ.Type.set == packet.getType() || IQ.Type.get == packet.getType()) {

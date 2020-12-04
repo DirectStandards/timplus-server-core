@@ -172,7 +172,7 @@ public class IQRosterHandler extends IQHandler implements ServerFeaturesProvider
 
         try {
             if ((sender.getNode() == null || !RosterManager.isRosterServiceEnabled() ||
-                    !userManager.isRegisteredUser(sender.getNode())) &&
+                    !userManager.isRegisteredUser(sender.toBareJID())) &&
                     IQ.Type.get == type) {
                 // If anonymous user asks for his roster or roster service is disabled then
                 // return an empty roster
@@ -186,7 +186,7 @@ public class IQRosterHandler extends IQHandler implements ServerFeaturesProvider
                 return null;
             }
 
-            Roster cachedRoster = userManager.getUser(sender.getNode()).getRoster();
+            Roster cachedRoster = userManager.getUser(sender.toBareJID()).getRoster();
             if (IQ.Type.get == type) {
 
                 if (RosterManager.isRosterVersioningEnabled()) {
@@ -297,7 +297,7 @@ public class IQRosterHandler extends IQHandler implements ServerFeaturesProvider
         // Forward set packet to the subscriber
         if (localServer.isLocal(recipient)) { // Recipient is local so let's handle it here
             try {
-                Roster recipientRoster = userManager.getUser(recipient.getNode()).getRoster();
+                Roster recipientRoster = userManager.getUser(recipient.toBareJID()).getRoster();
                 // Instead of deleting the sender in the recipient's roster, update it.
                 // http://issues.igniterealtime.org/browse/OF-720
                 RosterItem rosterItem = recipientRoster.getRosterItem(sender);

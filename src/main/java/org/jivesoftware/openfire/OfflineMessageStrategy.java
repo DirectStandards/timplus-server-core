@@ -86,13 +86,13 @@ public class OfflineMessageStrategy extends BasicModule implements ServerFeature
             if (recipientJID == null || serverAddress.equals(recipientJID) ||
                     recipientJID.getNode() == null ||
                     message.getExtension("received", "urn:xmpp:carbons:2") != null ||
-                    !UserManager.getInstance().isRegisteredUser(recipientJID.getNode())) {
+                    !UserManager.getInstance().isRegisteredUser(recipientJID.toBareJID())) {
                 return;
             }
 
             // Do not store messages if communication is blocked
             PrivacyList list =
-                    PrivacyListManager.getInstance().getDefaultPrivacyList(recipientJID.getNode(), recipientJID.getDomain());
+                    PrivacyListManager.getInstance().getDefaultPrivacyList(recipientJID.toBareJID(), recipientJID.getDomain());
             if (list != null && list.shouldBlockPacket(message)) {
                 Message result = message.createCopy();
                 result.setTo(message.getFrom());
@@ -186,7 +186,7 @@ public class OfflineMessageStrategy extends BasicModule implements ServerFeature
     }
 
     private boolean underQuota(Message message) {
-        return quota > messageStore.getSize(message.getTo().getNode()) + message.toXML().length();
+        return quota > messageStore.getSize(message.getTo().toBareJID()) + message.toXML().length();
     }
 
     private void store(Message message) {

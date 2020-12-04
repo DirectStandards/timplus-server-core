@@ -65,7 +65,7 @@
     JID address = new JID(jid);
     org.jivesoftware.openfire.session.ClientSession currentSess = sessionManager.getSession(address);
     boolean isAnonymous = webManager.getXMPPServer().isLocal(address) &&
-            !UserManager.getInstance().isRegisteredUser(address.getNode());
+            !UserManager.getInstance().isRegisteredUser(address.toBareJID());
 
     // No current session found
     if (currentSess == null) {
@@ -79,7 +79,7 @@
     // Get user object
     User user = null;
     if (!isAnonymous) {
-        user = webManager.getUserManager().getUser(address.getNode());
+        user = webManager.getUserManager().getUser(address.toBareJID());
     }
 
     // Handle a "message" click:
@@ -92,9 +92,9 @@
 
     // See if there are multiple sessions for this user:
     Collection<ClientSession> sessions = null;
-    int sessionCount = sessionManager.getSessionCount(address.getNode());
+    int sessionCount = sessionManager.getSessionCount(address.toBareJID());
     if (!isAnonymous && sessionCount > 1) {
-        sessions = sessionManager.getSessions(address.getNode());
+        sessions = sessionManager.getSessions(address.toBareJID());
     }
 
     // Number dateFormatter for all numbers on this page:
@@ -141,7 +141,7 @@
             <fmt:message key="session.details.username" />
         </td>
         <td>
-            <%  String n = address.getNode(); %>
+            <%  String n = address.toBareJID(); %>
             <%  if (isAnonymous) { %>
 
                 <i> <fmt:message key="session.details.anonymous" /> </i> - <%= address.getResource()==null?"":StringUtils.escapeHTMLTags(address.getResource()) %>

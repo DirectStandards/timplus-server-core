@@ -205,7 +205,7 @@ public class PresenceSubscribeHandler extends BasicModule implements ChannelHand
                     if (type == Presence.Type.subscribed) {
                         // Send the presence of the newly subscribed contact to the subscribee, by doing a presence probe.
                         JID prober = localServer.isLocal(recipientJID) ? recipientJID.asBareJID() : recipientJID;
-                        if (localServer.isLocal(senderJID) && !presenceManager.canProbePresence(prober, senderJID.getNode(), senderJID.getDomain())){
+                        if (localServer.isLocal(senderJID) && !presenceManager.canProbePresence(prober, senderJID.toBareJID(), senderJID.getDomain())){
                             Presence nonProbablePresence = new Presence();
                             nonProbablePresence.setStatus("unavailable");
                             nonProbablePresence.setFrom(senderJID);
@@ -249,8 +249,8 @@ public class PresenceSubscribeHandler extends BasicModule implements ChannelHand
     private Roster getRoster(JID address) {
         String username;
         Roster roster = null;
-        if (localServer.isLocal(address) && userManager.isRegisteredUser(address.getNode())) {
-            username = address.getNode();
+        if (localServer.isLocal(address) && userManager.isRegisteredUser(address.toBareJID())) {
+            username = address.toBareJID();
             try {
                 roster = rosterManager.getRoster(username, address.getDomain());
             }

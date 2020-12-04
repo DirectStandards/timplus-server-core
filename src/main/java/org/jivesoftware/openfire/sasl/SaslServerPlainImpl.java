@@ -23,6 +23,9 @@ import java.util.StringTokenizer;
 import java.io.IOException;
 import javax.security.sasl.Sasl;
 import javax.security.sasl.SaslServer;
+
+import org.jivesoftware.openfire.session.LocalSession;
+
 import javax.security.sasl.SaslException;
 import javax.security.sasl.AuthorizeCallback;
 import javax.security.auth.callback.Callback;
@@ -42,7 +45,7 @@ import javax.security.auth.callback.UnsupportedCallbackException;
  * @author Jay Kline
  */
 
-public class SaslServerPlainImpl implements SaslServer {
+public class SaslServerPlainImpl implements SaslServer, SessionAwareSaslServer {
 
     private String principal;
     private String username; //requested authorization identity
@@ -51,7 +54,7 @@ public class SaslServerPlainImpl implements SaslServer {
     private boolean completed;
     private boolean aborted;
     private int counter;
-
+    private LocalSession localSession;
 
     public SaslServerPlainImpl(String protocol, String serverFqdn, Map props, CallbackHandler cbh) throws SaslException {
         this.cbh = cbh;
@@ -112,6 +115,9 @@ public class SaslServerPlainImpl implements SaslServer {
                     username = tokens.nextToken();
                     principal = username;
                 }
+                if (localSession != null)
+                	username += "@" + localSession.getServerName();
+                
                 password = tokens.nextToken();
                 NameCallback ncb = new NameCallback("PLAIN authentication ID: ",principal);
                 VerifyPasswordCallback vpcb = new VerifyPasswordCallback(password.toCharArray());
@@ -244,4 +250,11 @@ public class SaslServerPlainImpl implements SaslServer {
         principal = null;
         completed = false;
     }
+    
+	@Override
+	public void setLocalSession(LocalSession session) 
+	{
+		this.localSession = session;
+		
+	}
 }

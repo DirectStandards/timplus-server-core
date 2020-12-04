@@ -84,7 +84,7 @@ public class DeleteUser extends AdHocCommand {
                 }
                 else
                 {
-                    User user = UserManager.getInstance().getUser( account.getNode());
+                    User user = UserManager.getInstance().getUser( account.toBareJID());
                 }
             }
             catch ( NullPointerException npe )

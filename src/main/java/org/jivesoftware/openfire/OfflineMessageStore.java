@@ -127,7 +127,7 @@ public class OfflineMessageStore extends BasicModule implements UserEventListene
             return false;
         }
         JID recipient = message.getTo();
-        String username = recipient.getNode();
+        String username = recipient.toBareJID();
         // If the username is null (such as when an anonymous user), don't store.
         if (username == null || !UserManager.getInstance().isRegisteredUser(recipient)) {
             return false;

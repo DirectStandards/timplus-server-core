@@ -372,12 +372,12 @@ public class XMPPServer {
      */
     public JID createJID(String username, String domain, String resource) 
     {
-        return new JID(DomainResolver.resolveUsername(username), StringUtils.isEmpty(domain) ? xmppServerInfo.getXMPPDomain() : domain, resource);
+        return new JID(DomainResolver.resolveUsernameLocalPart(username), StringUtils.isEmpty(domain) ? xmppServerInfo.getXMPPDomain() : domain, resource);
     }
 
     public JID createJID(String username, String domain, String resource, boolean skipStringprep) 
     {
-        return new JID(DomainResolver.resolveUsername(username), StringUtils.isEmpty(domain) ? xmppServerInfo.getXMPPDomain() : domain, resource, skipStringprep);
+        return new JID(DomainResolver.resolveUsernameLocalPart(username), StringUtils.isEmpty(domain) ? xmppServerInfo.getXMPPDomain() : domain, resource, skipStringprep);
     }
 
     /**

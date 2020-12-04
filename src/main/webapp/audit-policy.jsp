@@ -132,7 +132,7 @@
                     String username = tok;
                     if (tok.contains("@")) {
                         if (tok.contains("@" + webManager.getServerInfo().getXMPPDomain())) {
-                           username = new JID(tok).getNode();
+                           username = new JID(tok).toBareJID();
                         }
                         else {
                             // Skip this JID since it belongs to a remote server
