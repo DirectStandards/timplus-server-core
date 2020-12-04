@@ -193,7 +193,7 @@ public class PresenceManagerImpl extends BasicModule implements PresenceManager,
         // available. Only perform this operation if this is an available presence sent to
         // THE SERVER and the presence belongs to a local user.
         if (presence.getTo() == null && server.isLocal(presence.getFrom())) {
-            String username = presence.getFrom().getNode();
+            String username = presence.getFrom().toBareJID();
             String domain = presence.getFrom().getDomain();
             if (username == null || !userManager.isRegisteredUser(username)) 
             {
@@ -238,7 +238,7 @@ public class PresenceManagerImpl extends BasicModule implements PresenceManager,
         // offline if this is an unavailable presence sent to THE SERVER and the presence belongs
         // to a local user.
         if (presence.getTo() == null && server.isLocal(presence.getFrom())) {
-            String username = presence.getFrom().getNode();
+            String username = presence.getFrom().toBareJID();
             String domain = presence.getFrom().getDomain();
             if (username == null || !userManager.isRegisteredUser(username)) 
             {
@@ -304,7 +304,7 @@ public class PresenceManagerImpl extends BasicModule implements PresenceManager,
 
     @Override
     public void handleProbe(Presence packet) throws UnauthorizedException {
-        String username = packet.getTo().getNode();
+        String username = packet.getTo().toBareJID();
         String domain = packet.getTo().getDomain();
         try {
             Roster roster = rosterManager.getRoster(username, domain);
@@ -354,7 +354,7 @@ public class PresenceManagerImpl extends BasicModule implements PresenceManager,
                 // Local probers should receive presences of probee in all connected resources
                 Collection<JID> proberFullJIDs = new ArrayList<>();
                 if (prober.getResource() == null && server.isLocal(prober)) {
-                    for (ClientSession session : sessionManager.getSessions(prober.getNode())) {
+                    for (ClientSession session : sessionManager.getSessions(prober.toBareJID())) {
                         proberFullJIDs.add(session.getAddress());
                     }
                 }
@@ -363,16 +363,16 @@ public class PresenceManagerImpl extends BasicModule implements PresenceManager,
                 }
                 // If the probee is a local user then don't send a probe to the contact's server.
                 // But instead just send the contact's presence to the prober
-                Collection<ClientSession> sessions = sessionManager.getSessions(probee.getNode());
+                Collection<ClientSession> sessions = sessionManager.getSessions(probee.toBareJID());
                 if (sessions.isEmpty()) {
                     // If the probee is not online then try to retrieve his last unavailable
                     // presence which may contain particular information and send it to the
                     // prober
                     String presenceXML = offlinePresenceCache.get(probee.getNode());
                     if (presenceXML == null) {
-                        loadOfflinePresence(probee.getNode());
+                        loadOfflinePresence(probee.toBareJID());
                     }
-                    presenceXML = offlinePresenceCache.get(probee.getNode());
+                    presenceXML = offlinePresenceCache.get(probee.toBareJID());
                     if (presenceXML != null && !NULL_STRING.equals(presenceXML)) {
                         try {
                             // Parse the element
@@ -383,7 +383,7 @@ public class PresenceManagerImpl extends BasicModule implements PresenceManager,
                             // Check if default privacy list of the probee blocks the
                             // outgoing presence
                             PrivacyList list = PrivacyListManager.getInstance()
-                                    .getDefaultPrivacyList(probee.getNode(), probee.getDomain());
+                                    .getDefaultPrivacyList(probee.toBareJID(), probee.getDomain());
                             // Send presence to all prober's resources
                             for (JID receipient : proberFullJIDs) {
                                 presencePacket.setTo(receipient);
@@ -466,8 +466,8 @@ public class PresenceManagerImpl extends BasicModule implements PresenceManager,
 
     @Override
     public void sendUnavailableFromSessions(JID recipientJID, JID userJID) {
-        if (XMPPServer.getInstance().isLocal(userJID) && userManager.isRegisteredUser(userJID.getNode())) {
-            for (ClientSession session : sessionManager.getSessions(userJID.getNode())) {
+        if (XMPPServer.getInstance().isLocal(userJID) && userManager.isRegisteredUser(userJID.toBareJID())) {
+            for (ClientSession session : sessionManager.getSessions(userJID.toBareJID())) {
                 // Do not send an unavailable presence if the user sent a direct available presence
                 if (presenceUpdateHandler.hasDirectPresence(session.getAddress(), recipientJID)) {
                     continue;
@@ -479,7 +479,7 @@ public class PresenceManagerImpl extends BasicModule implements PresenceManager,
                 Collection<JID> recipientFullJIDs = new ArrayList<>();
                 if (server.isLocal(recipientJID)) {
                     for (ClientSession targetSession : sessionManager
-                            .getSessions(recipientJID.getNode())) {
+                            .getSessions(recipientJID.toBareJID())) {
                         recipientFullJIDs.add(targetSession.getAddress());
                     }
                 }
@@ -606,7 +606,7 @@ public class PresenceManagerImpl extends BasicModule implements PresenceManager,
         for (ClientSession session : XMPPServer.getInstance().getSessionManager().getSessions()) {
             if (!session.isAnonymousUser()) {
                 try {
-                    writeToDatabase(session.getUsername().getNode(), null, new Date());
+                    writeToDatabase(session.getUsername().toBareJID(), null, new Date());
                 } catch (UserNotFoundException e) {
                     Log.error(e.getMessage(), e);
                 }

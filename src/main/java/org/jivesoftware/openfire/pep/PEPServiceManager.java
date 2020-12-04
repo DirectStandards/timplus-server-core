@@ -105,7 +105,7 @@ public class PEPServiceManager {
         // Return an error if the packet is from an anonymous, unregistered user
         // or remote user
         if (!XMPPServer.getInstance().isLocal(owner)
-                || !UserManager.getInstance().isRegisteredUser(owner.getNode())) {
+                || !UserManager.getInstance().isRegisteredUser(owner.toBareJID())) {
             throw new IllegalArgumentException(
                     "Request must be initiated by a local, registered user, but is not: "
                             + owner);

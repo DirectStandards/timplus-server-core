@@ -301,7 +301,7 @@
                 Collections.sort(owners);
                 for (JID user : owners) {
                     boolean isGroup = GroupJID.isGroup(user);
-                    String username = JID.unescapeNode(user.getNode());
+                    String username = JID.unescapeNode(user.toBareJID());
                     String userDisplay = isGroup ? ((GroupJID)user).getGroupName() : username + '@' + user.getDomain();
         %>
             <tr>
@@ -312,7 +312,7 @@
                   <% } else { %>
                     <img src="images/user.gif" width="16" height="16" align="top" title="<fmt:message key="muc.room.affiliations.user" />" alt="<fmt:message key="muc.room.affiliations.user" />"/>
                   <% } %>
-                    <a href="<%= isGroup ? "group-edit.jsp?group=" + URLEncoder.encode(userDisplay) : "user-properties.jsp?username=" + URLEncoder.encode(user.getNode()) %>">
+                    <a href="<%= isGroup ? "group-edit.jsp?group=" + URLEncoder.encode(userDisplay) : "user-properties.jsp?username=" + URLEncoder.encode(user.toBareJID()) %>">
                     <%= StringUtils.escapeHTMLTags(userDisplay) %></a>
                 </td>
                 <td width="1%" align="center">
@@ -351,7 +351,7 @@
                   <% } else { %>
                     <img src="images/user.gif" width="16" height="16" align="top" title="<fmt:message key="muc.room.affiliations.user" />" alt="<fmt:message key="muc.room.affiliations.user" />"/>
                   <% } %>
-                    <a href="<%= isGroup ? "group-edit.jsp?group=" + URLEncoder.encode(userDisplay) : "user-properties.jsp?username=" + URLEncoder.encode(user.getNode()) %>">
+                    <a href="<%= isGroup ? "group-edit.jsp?group=" + URLEncoder.encode(userDisplay) : "user-properties.jsp?username=" + URLEncoder.encode(user.toBareJID()) %>">
                     <%= StringUtils.escapeHTMLTags(userDisplay) %></a>
                 </td>
                 <td width="1%" align="center">
@@ -379,7 +379,7 @@
                 Collections.sort(members);
                 for (JID user : members) {
                     boolean isGroup = GroupJID.isGroup(user);
-                    String username = JID.unescapeNode(user.getNode());
+                    String username = JID.unescapeNode(user.toBareJID());
                     String userDisplay = isGroup ? ((GroupJID)user).getGroupName() : username + '@' + user.getDomain();
                     String nickname = room.getReservedNickname(user);
                     nickname = (nickname == null ? "" : " (" + nickname + ")");
@@ -392,7 +392,7 @@
                   <% } else { %>
                     <img src="images/user.gif" width="16" height="16" align="top" title="<fmt:message key="muc.room.affiliations.user" />" alt="<fmt:message key="muc.room.affiliations.user" />"/>
                   <% } %>
-                    <a href="<%= isGroup ? "group-edit.jsp?group=" + URLEncoder.encode(userDisplay) : "user-properties.jsp?username=" + URLEncoder.encode(user.getNode()) %>">
+                    <a href="<%= isGroup ? "group-edit.jsp?group=" + URLEncoder.encode(userDisplay) : "user-properties.jsp?username=" + URLEncoder.encode(user.toBareJID()) %>">
                     <%= StringUtils.escapeHTMLTags(userDisplay) %></a><%= StringUtils.escapeHTMLTags(nickname) %>
                 </td>
                 <td width="1%" align="center">
@@ -420,7 +420,7 @@
                 Collections.sort(outcasts);
                 for (JID user : outcasts) {
                     boolean isGroup = GroupJID.isGroup(user);
-                    String username = JID.unescapeNode(user.getNode());
+                    String username = JID.unescapeNode(user.toBareJID());
                     String userDisplay = isGroup ? ((GroupJID)user).getGroupName() : username + '@' + user.getDomain();
         %>
             <tr>
@@ -431,7 +431,7 @@
                   <% } else { %>
                     <img src="images/user.gif" width="16" height="16" align="top" title="<fmt:message key="muc.room.affiliations.user" />" alt="<fmt:message key="muc.room.affiliations.user" />"/>
                   <% } %>
-                    <a href="<%= isGroup ? "group-edit.jsp?group=" + URLEncoder.encode(userDisplay) : "user-properties.jsp?username=" + URLEncoder.encode(user.getNode()) %>">
+                    <a href="<%= isGroup ? "group-edit.jsp?group=" + URLEncoder.encode(userDisplay) : "user-properties.jsp?username=" + URLEncoder.encode(user.toBareJID()) %>">
                     <%= StringUtils.escapeHTMLTags(userDisplay) %></a>
                 </td>
                 <td width="1%" align="center">

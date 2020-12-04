@@ -99,8 +99,8 @@ public class UserNameManager {
     public static String getUserName(JID entity, String defaultName) throws UserNotFoundException {
         if (server.isLocal(entity)) {
             // Contact is a local entity so search for his user name
-            User localUser = UserManager.getInstance().getUser(entity.getNode());
-            return !localUser.isNameVisible() || "".equals(localUser.getName()) ? entity.getNode() : localUser.getName();
+            User localUser = UserManager.getInstance().getUser(entity.toBareJID());
+            return !localUser.isNameVisible() || "".equals(localUser.getName()) ? entity.toBareJID() : localUser.getName();
         } else {
             UserNameProvider provider = providersByDomain.get(entity.getDomain());
             if (provider != null) {

@@ -182,7 +182,7 @@ public class LdapGroupProvider extends AbstractGroupProvider {
             if (!server.isLocal(user)) {
                 return Collections.emptyList();
             }
-            username = JID.unescapeNode(user.getNode());
+            username = JID.unescapeNode(user.toBareJID());
             try {
                 final String relativePart =
                     Arrays.stream(manager.findUserRDN(username))
@@ -197,7 +197,7 @@ public class LdapGroupProvider extends AbstractGroupProvider {
             }
         }
         else {
-            username = server.isLocal(user) ? JID.unescapeNode(user.getNode()) : user.toString();
+            username = server.isLocal(user) ? JID.unescapeNode(user.toBareJID()) : user.toString();
         }
         // Do nothing if the user is empty or null
         if (username == null || "".equals(username)) {

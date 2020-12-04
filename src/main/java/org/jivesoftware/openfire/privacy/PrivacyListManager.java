@@ -60,7 +60,7 @@ public class PrivacyListManager {
             public void privacyListModified(PrivacyList list) {
                 // Set object again in cache. This is done so that other cluster nodes
                 // get refreshed with latest version of the object
-                listsCache.put(getCacheKey(list.getUserJID().getNode(), list.getName()), list);
+                listsCache.put(getCacheKey(list.getUserJID().toBareJID(), list.getName()), list);
             }
         };
         instance.addListener(eventListener);

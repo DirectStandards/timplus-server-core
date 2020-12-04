@@ -140,7 +140,7 @@ public class CrowdGroupProvider extends AbstractGroupProvider {
         }
         
         try {
-            groups = new ArrayList(manager.getUserGroups(user.getNode()));
+            groups = new ArrayList(manager.getUserGroups(user.toBareJID()));
             userMembershipCache.put(user, groups);
             return groups;
         } catch (RemoteException re) {

@@ -76,7 +76,7 @@ public class AuthenticateUser extends AdHocCommand {
         // Get requested user
         User user;
         try {
-            user = UserManager.getInstance().getUser(account.getNode());
+            user = UserManager.getInstance().getUser(account.toBareJID());
         }
         catch (UserNotFoundException e) {
             // User not found

@@ -173,7 +173,7 @@ public class Roster implements Cacheable, Externalizable {
                 }
             } catch (UserNotFoundException e) {
                 Log.error("Groups (" + groups + ") include non-existent username (" +
-                        jid.getNode() +
+                        jid.toBareJID() +
                         ")");
             }
         }

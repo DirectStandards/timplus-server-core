@@ -297,7 +297,7 @@ public class DefaultGroupProvider extends AbstractGroupProvider {
         try {
             con = DbConnectionManager.getConnection();
             pstmt = con.prepareStatement(USER_GROUPS);
-            pstmt.setString(1, server.isLocal(user) ? user.getNode() : user.toString());
+            pstmt.setString(1, server.isLocal(user) ? user.toBareJID() : user.toString());
             rs = pstmt.executeQuery();
             while (rs.next()) {
                 groupNames.add(rs.getString(1));
@@ -320,7 +320,7 @@ public class DefaultGroupProvider extends AbstractGroupProvider {
             con = DbConnectionManager.getConnection();
             pstmt = con.prepareStatement(ADD_USER);
             pstmt.setString(1, groupName);
-            pstmt.setString(2, server.isLocal(user) ? user.getNode() : user.toString());
+            pstmt.setString(2, server.isLocal(user) ? user.toBareJID() : user.toString());
             pstmt.setInt(3, administrator ? 1 : 0);
             pstmt.executeUpdate();
         }
@@ -341,7 +341,7 @@ public class DefaultGroupProvider extends AbstractGroupProvider {
             pstmt = con.prepareStatement(UPDATE_USER);
             pstmt.setInt(1, administrator ? 1 : 0);
             pstmt.setString(2, groupName);
-            pstmt.setString(3, server.isLocal(user) ? user.getNode() : user.toString());
+            pstmt.setString(3, server.isLocal(user) ? user.toBareJID() : user.toString());
             pstmt.executeUpdate();
         }
         catch (SQLException e) {
@@ -360,7 +360,7 @@ public class DefaultGroupProvider extends AbstractGroupProvider {
             con = DbConnectionManager.getConnection();
             pstmt = con.prepareStatement(REMOVE_USER);
             pstmt.setString(1, groupName);
-            pstmt.setString(2, server.isLocal(user) ? user.getNode() : user.toString());
+            pstmt.setString(2, server.isLocal(user) ? user.toBareJID() : user.toString());
             pstmt.executeUpdate();
         }
         catch (SQLException e) {

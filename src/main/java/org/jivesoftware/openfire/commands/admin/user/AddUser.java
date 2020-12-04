@@ -105,7 +105,7 @@ public class AddUser extends AdHocCommand {
         }
 
         try {
-            UserManager.getInstance().createUser(account.getNode(), password, name, email, account.getDomain());
+            UserManager.getInstance().createUser(account.toBareJID(), password, name, email, account.getDomain());
         }
         catch (UserAlreadyExistsException e) {
             note.addAttribute("type", "error");

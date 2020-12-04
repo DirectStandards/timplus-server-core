@@ -265,7 +265,7 @@ public class PEPService implements PubSubService, Cacheable {
      */
     private boolean canProbePresence(JID prober, JID probee) throws UserNotFoundException {
         Roster roster;
-        roster = XMPPServer.getInstance().getRosterManager().getRoster(prober.getNode(), prober.getDomain());
+        roster = XMPPServer.getInstance().getRosterManager().getRoster(prober.toBareJID(), prober.getDomain());
         RosterItem item = roster.getRosterItem(probee);
 
         if (item.getSubStatus() == RosterItem.SUB_BOTH || item.getSubStatus() == RosterItem.SUB_FROM) {
@@ -343,7 +343,7 @@ public class PEPService implements PubSubService, Cacheable {
         Set<JID> recipientFullJIDs = new HashSet<>();
         if (XMPPServer.getInstance().isLocal(recipientJID)) {
             if (recipientJID.getResource() == null) {
-                for (ClientSession clientSession : SessionManager.getInstance().getSessions(recipientJID.getNode())) {
+                for (ClientSession clientSession : SessionManager.getInstance().getSessions(recipientJID.toBareJID())) {
                     recipientFullJIDs.add(clientSession.getAddress());
                 }
             }

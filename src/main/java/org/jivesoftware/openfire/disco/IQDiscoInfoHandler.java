@@ -753,7 +753,7 @@ public class IQDiscoInfoHandler extends IQHandler implements ClusterEventListene
                             if (DomainManager.getInstance().isRegisteredDomain(admin.getDomain()))
                             try
                             {
-                                final String email = userManager.getUser( admin.getNode() ).getEmail();
+                                final String email = userManager.getUser( admin.toBareJID() ).getEmail();
                                 if ( email != null && !email.trim().isEmpty() )
                                 {
                                     fieldAdminAddresses.addValue( "mailto:" + email );

@@ -91,11 +91,11 @@ public class IQBlockingHandler extends IQHandler implements ServerFeaturesProvid
         final User user;
         try
         {
-            user = UserManager.getInstance().getUser( requester.getNode());
+            user = UserManager.getInstance().getUser( requester.toBareJID());
         }
         catch ( UserNotFoundException e )
         {
-            Log.error( "Unable to retrieve user '{}' that was verified to be an existing user!", requester.getNode(), e );
+            Log.error( "Unable to retrieve user '{}' that was verified to be an existing user!", requester.toBareJID(), e );
             final IQ error = IQ.createResultIQ( iq );
             error.setError( PacketError.Condition.internal_server_error );
             return error;

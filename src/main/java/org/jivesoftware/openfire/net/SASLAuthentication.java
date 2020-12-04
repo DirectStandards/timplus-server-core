@@ -51,6 +51,7 @@ import org.jivesoftware.openfire.sasl.AnonymousSaslServer;
 import org.jivesoftware.openfire.sasl.Failure;
 import org.jivesoftware.openfire.sasl.JiveSharedSecretSaslServer;
 import org.jivesoftware.openfire.sasl.SaslFailureException;
+import org.jivesoftware.openfire.sasl.SessionAwareSaslServer;
 import org.jivesoftware.openfire.session.ClientSession;
 import org.jivesoftware.openfire.session.ConnectionSettings;
 import org.jivesoftware.openfire.session.IncomingServerSession;
@@ -313,7 +314,11 @@ public class SASLAuthentication {
                     {
                         throw new SaslFailureException( Failure.INVALID_MECHANISM, "There is no provider that can provide a SASL server for the desired mechanism and properties." );
                     }
-
+                    if (saslServer instanceof SessionAwareSaslServer)
+                    {
+                    	((SessionAwareSaslServer)saslServer).setLocalSession(session);
+                    }
+                    
                     session.setSessionData( "SaslServer", saslServer );
 
                     if ( mechanismName.equals( "DIGEST-MD5" ) )

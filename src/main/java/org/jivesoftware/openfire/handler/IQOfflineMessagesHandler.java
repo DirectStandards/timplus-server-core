@@ -86,13 +86,13 @@ public class IQOfflineMessagesHandler extends IQHandler implements ServerFeature
         JID from = packet.getFrom();
         if (offlineRequest.element("purge") != null) {
             // User requested to delete all offline messages
-            messageStore.deleteMessages(from.getNode());
+            messageStore.deleteMessages(from.toBareJID());
         }
         else if (offlineRequest.element("fetch") != null) {
             // Mark that offline messages shouldn't be sent when the user becomes available
             stopOfflineFlooding(from);
             // User requested to receive all offline messages
-            for (OfflineMessage offlineMessage : messageStore.getMessages(from.getNode(), false)) {
+            for (OfflineMessage offlineMessage : messageStore.getMessages(from.toBareJID(), false)) {
                 sendOfflineMessage(from, offlineMessage);
             }
         }
@@ -107,15 +107,15 @@ public class IQOfflineMessagesHandler extends IQHandler implements ServerFeature
                 }
                 if ("view".equals(item.attributeValue("action"))) {
                     // User requested to receive specific message
-                    OfflineMessage offlineMsg = messageStore.getMessage(from.getNode(), creationDate);
+                    OfflineMessage offlineMsg = messageStore.getMessage(from.toBareJID(), creationDate);
                     if (offlineMsg != null) {
                         sendOfflineMessage(from, offlineMsg);
                     }
                 }
                 else if ("remove".equals(item.attributeValue("action"))) {
                     // User requested to delete specific message
-                    if (messageStore.getMessage(from.getNode(), creationDate) != null) {
-                        messageStore.deleteMessage(from.getNode(), creationDate);
+                    if (messageStore.getMessage(from.toBareJID(), creationDate) != null) {
+                        messageStore.deleteMessage(from.toBareJID(), creationDate);
                     } else {
                         // If the requester is authorized but the node does not exist, the server MUST return a <item-not-found/> error.
                         reply.setError(PacketError.Condition.item_not_found);
@@ -174,7 +174,7 @@ public class IQOfflineMessagesHandler extends IQHandler implements ServerFeature
 
         final FormField field2 = dataForm.addField();
         field2.setVariable("number_of_messages");
-        field2.addValue(String.valueOf(messageStore.getCount(senderJID.getNode())));
+        field2.addValue(String.valueOf(messageStore.getCount(senderJID.toBareJID())));
         
         final Set<DataForm> dataForms = new HashSet<>();
         dataForms.add(dataForm);
@@ -183,7 +183,7 @@ public class IQOfflineMessagesHandler extends IQHandler implements ServerFeature
 
     @Override
     public boolean hasInfo(String name, String node, JID senderJID, String domain) {
-        return NAMESPACE.equals(node) && userManager.isRegisteredUser(senderJID.getNode());
+        return NAMESPACE.equals(node) && userManager.isRegisteredUser(senderJID.toBareJID());
     }
 
     @Override
@@ -191,7 +191,7 @@ public class IQOfflineMessagesHandler extends IQHandler implements ServerFeature
         // Mark that offline messages shouldn't be sent when the user becomes available
         stopOfflineFlooding(senderJID);
         List<DiscoItem> answer = new ArrayList<>();
-        for (OfflineMessage offlineMessage : messageStore.getMessages(senderJID.getNode(), false)) {
+        for (OfflineMessage offlineMessage : messageStore.getMessages(senderJID.toBareJID(), false)) {
             answer.add(new DiscoItem(senderJID.asBareJID(), offlineMessage.getFrom().toString(),
                     XMPPDateTimeFormat.format(offlineMessage.getCreationDate()), null));
         }

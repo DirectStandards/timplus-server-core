@@ -234,7 +234,7 @@ public class InterceptorManager {
             // Do nothing
             return;
         }
-        String username = session != null ? session.getAddress().getNode() : null;
+        String username = session != null ? session.getAddress().toBareJID() : null;
         if (username != null && server.isLocal(session.getAddress())) {
             Collection<PacketInterceptor> userInterceptors = usersInterceptors.get(username);
             invokeInterceptors( userInterceptors, packet, session, read, processed );

@@ -147,7 +147,7 @@ public class RosterManager extends BasicModule implements GroupEventListener, Us
             return;
         }
         try {
-            String username = user.getNode();
+            String username = user.toBareJID();
             // Get the roster of the deleted user
             Roster roster = getRoster(username, user.getDomain());
             // Remove each roster item from the user's roster
@@ -388,7 +388,7 @@ public class RosterManager extends BasicModule implements GroupEventListener, Us
                 // Get the roster to update.
                 Roster roster = null;
                 if (server.isLocal(updatedUser)) {
-                    roster = rosterCache.get(updatedUser.getNode());
+                    roster = rosterCache.get(updatedUser.toBareJID());
                 }
                 if (roster != null) {
                     // Update the roster with the new group display name
@@ -578,12 +578,12 @@ public class RosterManager extends BasicModule implements GroupEventListener, Us
                 if (server.isLocal(userToUpdate)) {
                     // Check that the user exists, if not then continue with the next user
                     try {
-                        UserManager.getInstance().getUser(userToUpdate.getNode());
+                        UserManager.getInstance().getUser(userToUpdate.toBareJID());
                     }
                     catch (UserNotFoundException e) {
                         continue;
                     }
-                    roster = rosterCache.get(userToUpdate.getNode());
+                    roster = rosterCache.get(userToUpdate.toBareJID());
                 }
                 // Only update rosters in memory
                 if (roster != null) {
@@ -617,12 +617,12 @@ public class RosterManager extends BasicModule implements GroupEventListener, Us
                 if (server.isLocal(userToUpdate)) {
                     // Check that the user exists, if not then continue with the next user
                     try {
-                        UserManager.getInstance().getUser(userToUpdate.getNode());
+                        UserManager.getInstance().getUser(userToUpdate.toBareJID());
                     }
                     catch (UserNotFoundException e) {
                         continue;
                     }
-                    roster = rosterCache.get(userToUpdate.getNode());
+                    roster = rosterCache.get(userToUpdate.toBareJID());
                 }
                 // Only update rosters in memory
                 if (roster != null) {
@@ -650,7 +650,7 @@ public class RosterManager extends BasicModule implements GroupEventListener, Us
                 groupUsers.addAll(group.getMembers());
 
                 for (JID groupUser : groupUsers) {
-                    rosterCache.remove(groupUser.getNode());
+                    rosterCache.remove(groupUser.toBareJID());
                 }
             }
         }
@@ -677,7 +677,7 @@ public class RosterManager extends BasicModule implements GroupEventListener, Us
         // Get the roster of the added user.
         Roster addedUserRoster = null;
         if (server.isLocal(addedUser)) {
-            addedUserRoster = rosterCache.get(addedUser.getNode());
+            addedUserRoster = rosterCache.get(addedUser.toBareJID());
         }
 
         // Iterate on all the affected users and update their rosters
@@ -688,12 +688,12 @@ public class RosterManager extends BasicModule implements GroupEventListener, Us
                 if (server.isLocal(userToUpdate)) {
                     // Check that the user exists, if not then continue with the next user
                     try {
-                        UserManager.getInstance().getUser(userToUpdate.getNode());
+                        UserManager.getInstance().getUser(userToUpdate.toBareJID());
                     }
                     catch (UserNotFoundException e) {
                         continue;
                     }
-                    roster = rosterCache.get(userToUpdate.getNode());
+                    roster = rosterCache.get(userToUpdate.toBareJID());
                 }
                 // Only update rosters in memory
                 if (roster != null) {
@@ -702,7 +702,7 @@ public class RosterManager extends BasicModule implements GroupEventListener, Us
                 // Check if the roster is still not in memory
                 if (addedUserRoster == null && server.isLocal(addedUser)) {
                     addedUserRoster =
-                            rosterCache.get(addedUser.getNode());
+                            rosterCache.get(addedUser.toBareJID());
                 }
                 // Update the roster of the newly added group user.
                 if (addedUserRoster != null) {
@@ -746,7 +746,7 @@ public class RosterManager extends BasicModule implements GroupEventListener, Us
         // Get the roster of the deleted user.
         Roster deletedUserRoster = null;
         if (server.isLocal(deletedUser)) {
-            deletedUserRoster = rosterCache.get(deletedUser.getNode());
+            deletedUserRoster = rosterCache.get(deletedUser.toBareJID());
         }
 
         // Iterate on all the affected users and update their rosters
@@ -756,12 +756,12 @@ public class RosterManager extends BasicModule implements GroupEventListener, Us
             if (server.isLocal(userToUpdate)) {
                 // Check that the user exists, if not then continue with the next user
                 try {
-                    UserManager.getInstance().getUser(userToUpdate.getNode());
+                    UserManager.getInstance().getUser(userToUpdate.toBareJID());
                 }
                 catch (UserNotFoundException e) {
                     continue;
                 }
-                roster = rosterCache.get(userToUpdate.getNode());
+                roster = rosterCache.get(userToUpdate.toBareJID());
             }
             // Only update rosters in memory
             if (roster != null) {
@@ -770,7 +770,7 @@ public class RosterManager extends BasicModule implements GroupEventListener, Us
             // Check if the roster is still not in memory
             if (deletedUserRoster == null && server.isLocal(deletedUser)) {
                 deletedUserRoster =
-                        rosterCache.get(deletedUser.getNode());
+                        rosterCache.get(deletedUser.toBareJID());
             }
             // Update the roster of the newly deleted group user.
             if (deletedUserRoster != null) {

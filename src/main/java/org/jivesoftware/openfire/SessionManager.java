@@ -782,7 +782,7 @@ public class SessionManager extends BasicModule implements ClusterEventListener
 
     public boolean isAnonymousRoute(String username) {
         // JID's node and resource are the same for anonymous sessions
-        return isAnonymousRoute(new JID(username, serverName, username, true));
+        return isAnonymousRoute(XMPPServer.getInstance().createJID(username, serverName, "", true));
     }
 
     public boolean isAnonymousRoute(JID address) {
@@ -795,7 +795,7 @@ public class SessionManager extends BasicModule implements ClusterEventListener
         
         final String domain = DomainResolver.resolveUserDomain(username);
         
-        Session session = routingTable.getClientRoute(new JID(username, domain, resource));
+        Session session = routingTable.getClientRoute(XMPPServer.getInstance().createJID(username, domain, resource));
         // Makes sure the session is still active
         if (session != null && !session.isClosed()) {
             hasRoute = session.validate();
@@ -974,7 +974,7 @@ public class SessionManager extends BasicModule implements ClusterEventListener
         final String domain = user.getDomain();
         
         if (username != null && user.getDomain() != null) {
-            List<JID> addresses = routingTable.getRoutes(new JID(username, domain, null, true), null);
+            List<JID> addresses = routingTable.getRoutes(XMPPServer.getInstance().createJID(username, domain, null, true), null);
             for (JID address : addresses) {
                 sessionList.add(routingTable.getClientRoute(address));
             }
@@ -1052,13 +1052,13 @@ public class SessionManager extends BasicModule implements ClusterEventListener
      */
     public int getActiveSessionCount(String username) {
     	final String domain = DomainResolver.resolveUserDomain(username);
-        return routingTable.getRoutes(new JID(username, domain, null, true), null).size();
+        return routingTable.getRoutes(XMPPServer.getInstance().createJID(username, domain, null, true), null).size();
     }
 
     public int getSessionCount(String username) {
         // TODO Count ALL sessions not only available
     	final String domain = DomainResolver.resolveUserDomain(username);
-        return routingTable.getRoutes(new JID(username, domain, null, true), null).size();
+        return routingTable.getRoutes(XMPPServer.getInstance().createJID(username, domain, null, true), null).size();
     }
 
     /**
@@ -1158,7 +1158,7 @@ public class SessionManager extends BasicModule implements ClusterEventListener
     public void userBroadcast(String username, Packet packet) throws PacketException {
         // TODO broadcast to ALL sessions of the user and not only available
     	final String domain = DomainResolver.resolveUserDomain(username);
-        for (JID address : routingTable.getRoutes(new JID(username, domain, null), null)) {
+        for (JID address : routingTable.getRoutes(XMPPServer.getInstance().createJID(username, domain, null), null)) {
             packet.setTo(address);
             routingTable.routePacket(address, packet, true);
         }
@@ -1465,7 +1465,7 @@ public class SessionManager extends BasicModule implements ClusterEventListener
             broadcast(packet);
         }
         else if (address.getResource() == null || address.getResource().length() < 1) {
-            userBroadcast(address.getNode(), packet);
+            userBroadcast(address.toBareJID(), packet);
         }
         else {
             routingTable.routePacket(address, packet, true);

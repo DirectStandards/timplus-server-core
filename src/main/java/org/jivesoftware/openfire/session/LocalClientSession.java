@@ -563,7 +563,7 @@ public class LocalClientSession extends LocalSession implements ClientSession {
             try 
             {
             	final JID user = getUsername();
-            	return PrivacyListManager.getInstance().getPrivacyList(user.getNode(), user.getDomain(), activeList);
+            	return PrivacyListManager.getInstance().getPrivacyList(user.toBareJID(), user.getDomain(), activeList);
             } catch (UserNotFoundException e) {
                 Log.error(e.getMessage(), e);
             }
@@ -598,7 +598,7 @@ public class LocalClientSession extends LocalSession implements ClientSession {
         if (defaultList != null) {
             try {
             	final JID user = getUsername();
-                return PrivacyListManager.getInstance().getPrivacyList(user.getNode(), user.getDomain(), defaultList);
+                return PrivacyListManager.getInstance().getPrivacyList(user.toBareJID(), user.getDomain(), defaultList);
             } catch (UserNotFoundException e) {
                 Log.error(e.getMessage(), e);
             }
@@ -684,7 +684,7 @@ public class LocalClientSession extends LocalSession implements ClientSession {
         if (auth.isAnonymous()) {
             jid = new JID(resource, getServerName(), resource);
         } else {
-            jid = new JID(auth.getUsername(), DomainResolver.resolveUserDomain(auth.getUsername()), resource);
+            jid = XMPPServer.getInstance().createJID(auth.getUsername(), DomainResolver.resolveUserDomain(auth.getUsername()), resource);
         }
         setAddress(jid);
         authToken = auth;
@@ -781,7 +781,7 @@ public class LocalClientSession extends LocalSession implements ClientSession {
         if(offlineFloodStopped || presence.getPriority() < 0) {
             return false;
         }
-        String username = getAddress().getNode();
+        String username = getAddress().toBareJID();
         for (ClientSession session : sessionManager.getSessions(username)) {
             if (session.isOfflineFloodStopped()) {
                 return false;

@@ -231,8 +231,8 @@ public class SessionResultFilter {
                     break;
                 case SessionResultFilter.SORT_USER:
                     // sort first by name, then by resource
-                    String lUsername = lhs.isAnonymousUser() ? "" : lhs.getAddress().getNode();
-                    String rUsername = rhs.isAnonymousUser() ? "" : rhs.getAddress().getNode();
+                    String lUsername = lhs.isAnonymousUser() ? "" : lhs.getAddress().toBareJID();
+                    String rUsername = rhs.isAnonymousUser() ? "" : rhs.getAddress().toBareJID();
                     comparison = compareString(lUsername, rUsername);
                     if (comparison == 0) {
                         comparison = compareString(lhs.getAddress().getResource(),

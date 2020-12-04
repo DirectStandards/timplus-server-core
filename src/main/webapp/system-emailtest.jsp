@@ -123,7 +123,7 @@
     if (!jids.isEmpty()) {
         for (JID jid : jids) {
             if (webManager.getXMPPServer().isLocal(jid)) {
-                user = webManager.getUserManager().getUser(jid.getNode());
+                user = webManager.getUserManager().getUser(jid.toBareJID());
                 if (user.getEmail() != null) {
                     break;
                 }

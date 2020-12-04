@@ -306,7 +306,7 @@
                           <% } else { %>
                             <img src="images/user.gif" width="16" height="16" align="top" title="<fmt:message key="muc.create.permission.user" />" alt="<fmt:message key="muc.create.permission.user" />"/>
                           <% } %>
-                          <a href="<%= isGroup ? "group-edit.jsp?group=" + URLEncoder.encode(jidDisplay) : "user-properties.jsp?username=" + URLEncoder.encode(jid.getNode()) %>">
+                          <a href="<%= isGroup ? "group-edit.jsp?group=" + URLEncoder.encode(jidDisplay) : "user-properties.jsp?username=" + URLEncoder.encode(jid.toBareJID()) %>">
                           <%= jidDisplay %></a>
                         </td>
                         <td width="1%" align="center">

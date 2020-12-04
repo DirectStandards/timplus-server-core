@@ -457,7 +457,7 @@ public final class UserManager {
     public boolean isRegisteredUser(final JID user) {
         if (xmppServer.isLocal(user)) {
             try {
-                final User localUser = getUser(user.getNode());
+                final User localUser = getUser(user.toBareJID());
                 
                 return localUser.getDomain().equals(user.getDomain().toLowerCase());
             }

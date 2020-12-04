@@ -237,8 +237,8 @@ public class PresenceUpdateHandler extends BasicModule implements ChannelHandler
     private void initSession(ClientSession session) throws UserNotFoundException {
 
         // Only user sessions need to be authenticated
-        if (userManager.isRegisteredUser(session.getAddress().getNode())) {
-            String username = session.getAddress().getNode();
+        if (userManager.isRegisteredUser(session.getAddress().toBareJID())) {
+            String username = session.getAddress().toBareJID();
             String domain = session.getAddress().getDomain();
             
             // Send pending subscription requests to user if roster service is enabled
@@ -303,7 +303,7 @@ public class PresenceUpdateHandler extends BasicModule implements ChannelHandler
                 return;
             }
             // Local updates can simply run through the roster of the local user
-            String name = update.getFrom().getNode();
+            String name = update.getFrom().toBareJID();
             String domain = update.getFrom().getDomain();
             try {
                 if (name != null && !"".equals(name)) {
@@ -343,7 +343,7 @@ public class PresenceUpdateHandler extends BasicModule implements ChannelHandler
         }
         if (localServer.isLocal(update.getFrom())) {
             boolean keepTrack = false;
-            String name = update.getFrom().getNode();
+            String name = update.getFrom().toBareJID();
             String domain = update.getFrom().getDomain();
             if (name != null && !"".equals(name)) {
                 // Keep track of all directed presences if roster service is disabled

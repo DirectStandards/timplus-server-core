@@ -48,7 +48,7 @@ public class IQSharedGroupHandler extends IQHandler {
     @Override
     public IQ handleIQ(IQ packet) throws UnauthorizedException {
         IQ result = IQ.createResultIQ(packet);
-        String username = packet.getFrom().getNode();
+        String username = packet.getFrom().toBareJID();
         String domain = packet.getFrom().getDomain();
         if (!serverName.equals(packet.getFrom().getDomain()) || username == null) {
             // Users of remote servers are not allowed to get their "shared groups". Users of

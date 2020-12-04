@@ -338,7 +338,7 @@ public class IQPEPHandler extends IQHandler implements ServerIdentitiesProvider,
                     try {
                         final RosterManager rm = XMPPServer.getInstance()
                                 .getRosterManager();
-                        final Roster roster = rm.getRoster(senderJID.getNode(), senderJID.getDomain());
+                        final Roster roster = rm.getRoster(senderJID.toBareJID(), senderJID.getDomain());
                         for (final RosterItem item : roster.getRosterItems()) {
                             if (item.getSubStatus() == RosterItem.SUB_BOTH
                                     || item.getSubStatus() == RosterItem.SUB_FROM) {
@@ -757,7 +757,7 @@ public class IQPEPHandler extends IQHandler implements ServerIdentitiesProvider,
             // Send the last published items for the contacts on availableSessionJID's roster.
             try {
                 final XMPPServer server = XMPPServer.getInstance();
-                final Roster roster = server.getRosterManager().getRoster(availableSessionJID.getNode(), availableSessionJID.getDomain());
+                final Roster roster = server.getRosterManager().getRoster(availableSessionJID.toBareJID(), availableSessionJID.getDomain());
                 for (final RosterItem item : roster.getRosterItems()) {
                     if (server.isLocal(item.getJid()) && (item.getSubStatus() == RosterItem.SUB_BOTH ||
                             item.getSubStatus() == RosterItem.SUB_TO)) {
