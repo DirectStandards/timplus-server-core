@@ -218,6 +218,15 @@ public class AdminManager {
     public boolean isUserAdmin(String username, String domain, boolean allowAdminIfEmpty) {
         username = JID.unescapeNode(username);
     	
+        try
+        {
+        	domain = DomainResolver.resolveUserDomain(username);
+        }
+        catch (Exception e)
+        {
+        	Log.warn("Could not get domain name from username.");
+        }
+        
     	if (adminList == null) {
             loadAdminList();
         }
