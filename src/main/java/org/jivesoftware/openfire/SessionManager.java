@@ -25,6 +25,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 import java.util.stream.Collectors;
 
+import org.apache.commons.lang3.StringUtils;
 import org.jivesoftware.openfire.audit.AuditStreamIDFactory;
 import org.jivesoftware.openfire.auth.AuthToken;
 import org.jivesoftware.openfire.auth.UnauthorizedException;
@@ -402,14 +403,14 @@ public class SessionManager extends BasicModule implements ClusterEventListener
      * @throws UnauthorizedException if the server has not been initialised
      * @throws UnknownHostException if no IP address for the peer could be found,
      */
-    public HttpSession createClientHttpSession(StreamID id, HttpConnection connection, Locale language)
+    public HttpSession createClientHttpSession(StreamID id, HttpConnection connection, Locale language, String domain)
         throws UnauthorizedException, UnknownHostException
     {
         if (serverName == null) {
             throw new UnauthorizedException("Server not initialized");
         }
         PacketDeliverer backupDeliverer = server.getPacketDeliverer();
-        HttpSession session = new HttpSession(backupDeliverer, serverName, id, connection, language);
+        HttpSession session = new HttpSession(backupDeliverer, StringUtils.isEmpty(domain) ? serverName : domain, id, connection, language);
         Connection conn = session.getConnection();
         conn.init(session);
         conn.registerCloseListener(clientSessionListener, session);

@@ -133,6 +133,11 @@ public class HttpBindBody
         return language;
     }
 
+    public String getTo()
+    {
+    	return document.getRootElement().attributeValue( "to" );
+    }
+    
     public int getWait()
     {
         return getIntAttribute( document.getRootElement().attributeValue( "wait" ), 60 );

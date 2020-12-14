@@ -157,7 +157,7 @@ public class HttpSessionManager {
         throws UnauthorizedException, HttpBindException, UnknownHostException
     {
         // TODO Check if IP address is allowed to connect to the server
-        HttpSession session = createSession(connection, Locale.forLanguageTag(body.getLanguage()));
+        HttpSession session = createSession(connection, Locale.forLanguageTag(body.getLanguage()), body.getTo());
         session.setWait(Math.min(body.getWait(), getMaxWait()));
         session.setHold(body.getHold());
         session.setSecure(connection.isSecure());
@@ -268,12 +268,12 @@ public class HttpSessionManager {
         return JiveGlobals.getIntProperty("xmpp.httpbind.client.idle.polling", 60);
     }
 
-    private HttpSession createSession(HttpConnection connection, Locale language) throws UnauthorizedException, UnknownHostException
+    private HttpSession createSession(HttpConnection connection, Locale language, String domain) throws UnauthorizedException, UnknownHostException
     {
         // Create a ClientSession for this user.
         StreamID streamID = SessionManager.getInstance().nextStreamID();
         // Send to the server that a new client session has been created
-        HttpSession session = sessionManager.createClientHttpSession(streamID, connection, language);
+        HttpSession session = sessionManager.createClientHttpSession(streamID, connection, language, domain);
         // Register that the new session is associated with the specified stream ID
         sessionMap.put(streamID.getID(), session);
         SessionEventDispatcher.addListener( sessionListener );
