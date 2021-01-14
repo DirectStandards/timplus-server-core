@@ -25,6 +25,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -139,8 +140,11 @@ public class ProxyConnectionManager {
                     	
                     	final SNIMatcher matcher = SSLObjectFactory.createAliasMatcher();
                     	
-                    	
-                    	final List<SNIMatcher> matchers = new ArrayList<>(params.getSNIMatchers());
+                    	final Collection<SNIMatcher> existingMatchers = params.getSNIMatchers();
+                    	final List<SNIMatcher> matchers = 
+                    			(existingMatchers != null && !existingMatchers.isEmpty()) ? new ArrayList<>(params.getSNIMatchers()) :
+                    				new ArrayList<>();
+                    			
                     	matchers.add(matcher);
                     	
                     	params.setSNIMatchers(matchers);
@@ -171,9 +175,11 @@ public class ProxyConnectionManager {
                         }
                         else 
                         {
+                        	Log.error("Proxy conenction server socket has been closed and will not accept any more connections.", e);
                             break;
                         }
                     }
+                    Log.info("Accepted proxy socket connection from " + socket.getInetAddress().getHostAddress());
                     executor.submit(new Runnable() 
                     {
                         @Override
