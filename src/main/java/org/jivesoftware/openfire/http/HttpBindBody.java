@@ -15,6 +15,7 @@
  */
 package org.jivesoftware.openfire.http;
 
+import org.apache.commons.lang3.StringUtils;
 import org.dom4j.Document;
 import org.dom4j.DocumentException;
 import org.dom4j.Element;
@@ -103,6 +104,11 @@ public class HttpBindBody
         return document.getRootElement().attributeValue( "sid" );
     }
 
+    public String getStream()
+    {
+        return document.getRootElement().attributeValue( "stream" );
+    }
+    
     public boolean isEmpty()
     {
         return document.getRootElement().elements().isEmpty();
@@ -117,6 +123,8 @@ public class HttpBindBody
         { isPoll = false; }
         else if ( document.getRootElement().attributeValue( "pause" ) != null )
         { isPoll = false; }
+        else if (!StringUtils.isEmpty(getSid()) && !StringUtils.isEmpty(getTo()) && isEmpty())
+		{ isPoll = false; }
 
         return isPoll;
     }

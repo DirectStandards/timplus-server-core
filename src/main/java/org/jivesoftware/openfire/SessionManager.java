@@ -399,18 +399,20 @@ public class SessionManager extends BasicModule implements ClusterEventListener
      * @param connection the connection to create the session from.
      * @param id the streamID to use for the new session.
      * @param language The language to use for the session
+     * @param defaultStreamName The default stream name.  This is the stream name (not to be confused with the session ID) to be used
+     * for BOSH stream multiplexing if a stream name is not supplied with an HTTP POST from the client.
      * @return a newly created session.
      * @throws UnauthorizedException if the server has not been initialised
      * @throws UnknownHostException if no IP address for the peer could be found,
      */
-    public HttpSession createClientHttpSession(StreamID id, HttpConnection connection, Locale language, String domain)
+    public HttpSession createClientHttpSession(StreamID id, HttpConnection connection, Locale language, String domain, String defaultStreamName)
         throws UnauthorizedException, UnknownHostException
     {
         if (serverName == null) {
             throw new UnauthorizedException("Server not initialized");
         }
         PacketDeliverer backupDeliverer = server.getPacketDeliverer();
-        HttpSession session = new HttpSession(backupDeliverer, StringUtils.isEmpty(domain) ? serverName : domain, id, connection, language);
+        HttpSession session = new HttpSession(backupDeliverer, StringUtils.isEmpty(domain) ? serverName : domain, id, connection, language, defaultStreamName);
         Connection conn = session.getConnection();
         conn.init(session);
         conn.registerCloseListener(clientSessionListener, session);

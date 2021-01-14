@@ -30,8 +30,7 @@ import org.jivesoftware.util.TaskEngine;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.servlet.AsyncContext;
-import javax.xml.XMLConstants;
+
 import java.io.IOException;
 import java.net.UnknownHostException;
 import java.util.Locale;
@@ -272,8 +271,10 @@ public class HttpSessionManager {
     {
         // Create a ClientSession for this user.
         StreamID streamID = SessionManager.getInstance().nextStreamID();
+        // Create a default stream name for this session.
+        StreamID defaultStreamName = SessionManager.getInstance().nextStreamID();
         // Send to the server that a new client session has been created
-        HttpSession session = sessionManager.createClientHttpSession(streamID, connection, language, domain);
+        HttpSession session = sessionManager.createClientHttpSession(streamID, connection, language, domain, defaultStreamName.getID());
         // Register that the new session is associated with the specified stream ID
         sessionMap.put(streamID.getID(), session);
         SessionEventDispatcher.addListener( sessionListener );
@@ -311,6 +312,7 @@ public class HttpSessionManager {
             response.addAttribute("ver", String.valueOf(session.getMajorVersion())
                     + "." + String.valueOf(session.getMinorVersion()));
         }
+        response.addAttribute("stream", session.getDefaultStream());
 
         Element features = response.addElement("stream:features");
         for (Element feature : session.getAvailableStreamFeaturesElements()) {

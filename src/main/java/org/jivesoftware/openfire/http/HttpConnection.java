@@ -167,6 +167,7 @@ public class HttpConnection {
         return (X509Certificate[]) context.getRequest().getAttribute("javax.servlet.request.X509Certificate");
     }
 
+    
     @Override
     public String toString() {
         return (session != null ? session.toString() : "[Anonymous]")

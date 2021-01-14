@@ -16,13 +16,14 @@
 
 package org.jivesoftware.openfire.http;
 
+import org.apache.commons.lang3.StringUtils;
 import org.dom4j.DocumentHelper;
 import org.dom4j.Element;
 import org.dom4j.Namespace;
 import org.dom4j.QName;
 import org.dom4j.io.XMPPPacketReader;
 import org.jivesoftware.openfire.PacketDeliverer;
-import org.jivesoftware.openfire.SessionPacketRouter;
+import org.jivesoftware.openfire.SessionManager;
 import org.jivesoftware.openfire.StreamID;
 import org.jivesoftware.openfire.XMPPServer;
 import org.jivesoftware.openfire.auth.UnauthorizedException;
@@ -42,6 +43,7 @@ import org.slf4j.LoggerFactory;
 import org.xmlpull.v1.XmlPullParserException;
 import org.xmlpull.v1.XmlPullParserFactory;
 import org.xmpp.packet.IQ;
+import org.xmpp.packet.JID;
 import org.xmpp.packet.Message;
 import org.xmpp.packet.Packet;
 import org.xmpp.packet.Presence;
@@ -56,6 +58,7 @@ import java.net.UnknownHostException;
 import java.security.cert.Certificate;
 import java.security.cert.X509Certificate;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
 
 /**
@@ -94,7 +97,6 @@ public class HttpSession extends LocalClientSession {
 
     private int wait;
     private int hold = 0;
-    private String language;
     private final List<HttpConnection> connectionQueue = Collections.synchronizedList(new LinkedList<HttpConnection>());
     private final List<Deliverable> pendingElements = Collections.synchronizedList(new ArrayList<Deliverable>());
     private final List<Delivered> sentElements = Collections.synchronizedList(new ArrayList<Delivered>());
@@ -115,9 +117,13 @@ public class HttpSession extends LocalClientSession {
     private int minorVersion = -1;
     private X509Certificate[] sslCertificates;
 
-    private final Queue<Collection<Element>> packetsToSend = new LinkedList<>();
+    private Map<String, JID> streamAddressMap = new ConcurrentHashMap<>();
+    private Map<JID, String> addressStreamMap = new ConcurrentHashMap<>();
+    private String defaultStream;
+    
+    private final Queue<PacketStreamTuple> packetsToSend = new LinkedList<>();
     // Semaphore which protects the packets to send, so, there can only be one consumer at a time.
-    private SessionPacketRouter router;
+    private HttpSessionPacketRouter router;
 
     private static final Comparator<HttpConnection> connectionComparator
             = new Comparator<HttpConnection>() {
@@ -128,7 +134,7 @@ public class HttpSession extends LocalClientSession {
     };
 
     public HttpSession(PacketDeliverer backupDeliverer, String serverName,
-                       StreamID streamID, HttpConnection connection, Locale language) throws UnknownHostException
+                       StreamID streamID, HttpConnection connection, Locale language, String defaultStreamName) throws UnknownHostException
     {
         super(serverName, new HttpVirtualConnection(connection.getRemoteAddr(), ConnectionType.SOCKET_C2S), streamID, language);
         this.isClosed = false;
@@ -136,6 +142,12 @@ public class HttpSession extends LocalClientSession {
         this.lastRequestID = connection.getRequestId();
         this.backupDeliverer = backupDeliverer;
         this.sslCertificates = connection.getPeerCertificates();
+        this.defaultStream = defaultStreamName;
+        
+        // address is defaulted to the domain name by the base class constructor
+        streamAddressMap.put(defaultStream, super.getAddress());
+        addressStreamMap.put(super.getAddress().asBareJID(), defaultStream);
+        
         if (JiveGlobals.getBooleanProperty("log.httpbind.enabled", false)) {
             Log.info("Session " + getStreamID() + " being opened with initial connection " +
                     connection.toString());
@@ -425,6 +437,8 @@ public class HttpSession extends LocalClientSession {
                 if (!toClose.isClosed()) {
                     toClose.close();
                     lastRequestID = toClose.getRequestId();
+                    
+                    Log.info("HttpSession::pause - lastRequestId = " + lastRequestID);
                 }
             }
         }
@@ -581,7 +595,7 @@ public class HttpSession extends LocalClientSession {
         if (!body.isEmpty()) {
             // creates the runnable to forward the packets
             synchronized (packetsToSend) {
-                packetsToSend.add(body.getStanzaElements());
+                packetsToSend.add(new PacketStreamTuple(body.getStanzaElements(), body.getStream()));
             }
             new HttpPacketSender(this).init();
         }
@@ -592,16 +606,29 @@ public class HttpSession extends LocalClientSession {
             connection.deliverBody(createEmptyBody(true), true);
             close();
             lastRequestID = connection.getRequestId();
+            Log.info("HttpSession::forwardRequest::terminate - lastRequestId = " + lastRequestID);
         }
         else if (body.isRestart() && body.isEmpty() ) {
-            connection.deliverBody(createSessionRestartResponse(), true);
+            connection.deliverBody(createStreamRestartResponse(), true);
             lastRequestID = connection.getRequestId();
+            Log.info("HttpSession::forwardRequest::restart - lastRequestId = " + lastRequestID);
         }
         else if (body.getPause() > 0 && body.getPause() <= getMaxPause()) {
             pause(body.getPause());
             connection.deliverBody(createEmptyBody(false), true);
             lastRequestID = connection.getRequestId();
+            Log.info("HttpSession::forwardRequest::pause - lastRequestId = " + lastRequestID);
             setLastResponseEmpty(true);
+        }
+        /*
+         * Support for Multiple stream (Section 16 of XEP 0124).  If the body is empty, there is an existing 
+         * session id, and a "to" attribute exists, then a new stream is being requested. 
+         */
+        else if (isNewStreamRequest(body))
+        {
+        	connection.deliverBody(createNewStreamResponse(), true);
+        	lastRequestID = connection.getRequestId();
+        	Log.info("HttpSession::forwardRequest::newStreamRequest - lastRequestId = " + lastRequestID);
         }
         else {
             resetInactivityTimeout();
@@ -624,13 +651,14 @@ public class HttpSession extends LocalClientSession {
             }
 
             if (router == null) {
-                router = new SessionPacketRouter(this);
+                router = new HttpSessionPacketRouter(this);
             }
 
             do {
-                Collection<Element> packets = packetsToSend.remove();
-                for (Element packet : packets) {
+            	final PacketStreamTuple tuple = packetsToSend.remove();
+                for (Element packet : tuple.getPackets()) {
                     try {
+                    	router.setStreamName(tuple.getStreamName());
                         router.route(packet);
                     } catch (UnknownStanzaException e) {
                         Log.error( "On session " + getStreamID() + " client provided unknown packet type", e);
@@ -706,6 +734,7 @@ public class HttpSession extends LocalClientSession {
                         throw new IOException("Unexpected RID error.");
                     }
                     lastRequestID = connection.getRequestId();
+                    Log.info("HttpSession::createConnection::onTimeout - lastRequestId = " + lastRequestID);
                 } catch (HttpConnectionClosedException e) {
                     Log.warn("Unexpected exception while processing connection timeout.", e);
                 }
@@ -740,6 +769,8 @@ public class HttpSession extends LocalClientSession {
         }
         else if (rid > (lastRequestID + maxRequests)) {
             Log.warn("Request " + rid + " > " + (lastRequestID + maxRequests) + ", ending session " + streamID);
+            Log.warn("\tLast request id: " + lastRequestID);
+            Log.warn("\tMax requests: " + maxRequests);
                 throw new HttpBindException("Unexpected RID error.",
                         BoshBindingError.itemNotFound);
         }
@@ -814,6 +845,7 @@ public class HttpSession extends LocalClientSession {
 
                         if(rid == (lastRequestID + 1)) {
                             lastRequestID = rid;
+                            Log.info("HttpSession::addConnection - lastRequestId = " + lastRequestID);
                             if( logHttpbindEnabled ) {
                                 Log.info( "Updated session " + streamid + " to rid = " + rid );
                             }
@@ -836,6 +868,7 @@ public class HttpSession extends LocalClientSession {
             synchronized(pendingElements) {
                 deliver(connection, pendingElements);
                 lastRequestID = connection.getRequestId();
+                Log.info("HttpSession::addConnection::pollingSession - lastRequestId = " + lastRequestID);
                 pendingElements.clear();
             }
         }
@@ -870,6 +903,7 @@ public class HttpSession extends LocalClientSession {
                             toClose.close();
                         }
                         lastRequestID = toClose.getRequestId();
+                        Log.info("HttpSession::addConnection::closing - lastRequestId = " + lastRequestID);
                         closed++;
                     }
                 }
@@ -1035,6 +1069,7 @@ public class HttpSession extends LocalClientSession {
                 try {
                     if (connection.getRequestId() == lastRequestID + 1) {
                         lastRequestID = connection.getRequestId();
+                        Log.info("HttpSession::deliver - lastRequestId = " + lastRequestID);
                         deliver(connection, deliverable);
                         delivered = true;
                         break;
@@ -1065,17 +1100,43 @@ public class HttpSession extends LocalClientSession {
         }
     }
 
-    private String createDeliverable(Collection<Deliverable> elements) {
+    private String createDeliverable(Collection<Deliverable> elements) 
+    {
         StringBuilder builder = new StringBuilder();
         builder.append("<body xmlns='http://jabber.org/protocol/httpbind' ack='")
-                .append(getLastAcknowledged()).append("'>");
+                .append(getLastAcknowledged()).append("' ");
 
+
+        String streamName = "";	
+        
+        
+        StringBuilder elementBuilder = new StringBuilder();
         setLastResponseEmpty(elements.size() == 0);
         synchronized (elements) {
-            for (Deliverable child : elements) {
-                builder.append(child.getDeliverable());
+            for (Deliverable child : elements) 
+            {
+            	elementBuilder.append(child.getDeliverable());
+            	// all packets for a given deliverable should
+            	// be destined to the same to addresss (if any)
+            	if (child.getPackets() != null)
+            	{
+            		for (Packet packet : child.getPackets())
+            			if (packet.getTo() != null)
+            			{
+            				streamName = this.addressStreamMap.get(packet.getTo().asBareJID());
+            				break;
+            			}
+            	}
             }
         }
+        
+        
+        if (!StringUtils.isEmpty(streamName))
+        	builder.append("stream='").append(streamName).append("' ");
+        
+        builder.append(">");
+        builder.append(elementBuilder.toString());
+        
         builder.append("</body>");
         return builder.toString();
     }
@@ -1094,6 +1155,7 @@ public class HttpSession extends LocalClientSession {
                                 synchronized(pendingElements) {
                                     deliver(toClose, pendingElements);
                                     lastRequestID = toClose.getRequestId();
+                                    Log.info("HttpSession::closeSession - lastRequestId = " + lastRequestID);
                                     pendingElements.clear();
                                 }
                             } else {
@@ -1146,10 +1208,11 @@ public class HttpSession extends LocalClientSession {
         final Element body = DocumentHelper.createElement( QName.get( "body", "http://jabber.org/protocol/httpbind" ) );
         if (terminate) { body.addAttribute("type", "terminate"); }
         body.addAttribute("ack", String.valueOf(getLastAcknowledged()));
+        
         return body.asXML();
     }
 
-    private String createSessionRestartResponse()
+    private String createStreamRestartResponse()
     {
         final Element response = DocumentHelper.createElement( QName.get( "body", "http://jabber.org/protocol/httpbind" ) );
         response.addNamespace("stream", "http://etherx.jabber.org/streams");
@@ -1162,6 +1225,19 @@ public class HttpSession extends LocalClientSession {
         return response.asXML();
     }
 
+    protected String createNewStreamResponse()
+    {
+        final Element response = DocumentHelper.createElement( QName.get( "body", "http://jabber.org/protocol/httpbind" ) );
+       
+        final String newStreamName = SessionManager.getInstance().nextStreamID().getID();
+        response.addAttribute("stream", newStreamName);
+        
+        // we have a stream, but no authenticated/bound JID yet
+        streamAddressMap.put(newStreamName, super.getAddress());
+        
+        return response.asXML();
+    }
+    
     /**
      * A virtual server connection relates to a http session which its self can relate to many http
      * connections.
@@ -1235,14 +1311,15 @@ public class HttpSession extends LocalClientSession {
     static class Deliverable {
         private final String text;
         private final Collection<String> packets;
-
+        
         public Deliverable(String text) {
-            this.text = text;
+        	this.text = text;
             this.packets = null;
         }
 
-        public Deliverable(Collection<Packet> elements) {
-            this.text = null;
+        public Deliverable(Collection<Packet> elements) 
+        {
+        	this.text = null;
             this.packets = new ArrayList<>();
             for (Packet packet : elements) {
                 // Append packet namespace according XEP-0206 if needed
@@ -1390,5 +1467,62 @@ public class HttpSession extends LocalClientSession {
             ", inactivityTimeout='" + getInactivityTimeout() + '\'' +
             ", openConnectionCount='" + getOpenConnectionCount() + '\'' +
             '}';
+    }
+    
+    @Override
+    public JID getAddress()
+    {
+    	return getAddress(defaultStream);
+    }
+    
+    @Override
+    public void setAddress(JID address)
+    {
+    	setAddress(defaultStream, address);
+    }
+    
+    public JID getAddress(String streamName)
+    {
+    	return streamAddressMap.get(StringUtils.isEmpty(streamName) ? defaultStream : streamName);
+    }
+    
+    public String getDefaultStream()
+    {
+    	return defaultStream;
+    }
+    
+    public void setAddress(String streamName, JID address)
+    {
+    	streamAddressMap.put(streamName, address);
+    	addressStreamMap.put(address.asBareJID(),  streamName);
+    }
+    
+    protected static class PacketStreamTuple
+    {
+    	protected final Collection<Element> packets;
+    	protected final String streamName;
+    	
+    	public PacketStreamTuple(Collection<Element> packets, String streamName)
+    	{
+    		this.packets = packets;
+    		this.streamName = streamName;
+    	}
+
+		public Collection<Element>  getPackets() 
+		{
+			return packets;
+		}
+
+		public String getStreamName() 
+		{
+			return streamName;
+		}
+    	
+    	
+    }
+    
+    protected boolean isNewStreamRequest(HttpBindBody body)
+    {
+    	return (!StringUtils.isEmpty(body.getSid()) && !StringUtils.isEmpty(body.getTo()) && body.isEmpty());
     }
 }

@@ -32,7 +32,6 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.*;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
-import java.util.Date;
 
 /**
  * Servlet which handles requests to the HTTP binding service. It determines if there is currently
@@ -44,7 +43,10 @@ import java.util.Date;
  */
 public class HttpBindServlet extends HttpServlet {
     
-    private static final Logger Log = LoggerFactory.getLogger(HttpBindServlet.class);
+
+	private static final long serialVersionUID = -130555842469449622L;
+
+	private static final Logger Log = LoggerFactory.getLogger(HttpBindServlet.class);
 
     private HttpSessionManager sessionManager;
     private HttpBindManager boshManager;
@@ -183,7 +185,9 @@ public class HttpBindServlet extends HttpServlet {
 
             SessionEventDispatcher.dispatchEvent( null, SessionEventDispatcher.EventType.pre_session_created, connection, context );
 
-            connection.setSession(sessionManager.createSession(body, connection));
+            HttpSession httpSession = sessionManager.createSession(body, connection);
+            
+            connection.setSession(httpSession);
             if (JiveGlobals.getBooleanProperty("log.httpbind.enabled", false)) {
                 Log.info("HTTP RECV(" + connection.getSession().getStreamID().getID() + "): " + body.asXML());
             }

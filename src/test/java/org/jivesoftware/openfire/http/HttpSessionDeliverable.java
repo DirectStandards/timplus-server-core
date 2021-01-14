@@ -32,7 +32,7 @@ public class HttpSessionDeliverable
         packets.add( message );
 
         // Execute system under test
-        final HttpSession.Deliverable deliverable = new HttpSession.Deliverable( packets );
+        final HttpSession.Deliverable deliverable = new HttpSession.Deliverable( packets);
         final String result = deliverable.getDeliverable();
 
         // verify results
@@ -103,7 +103,7 @@ public class HttpSessionDeliverable
         packets.add( message );
 
         // Execute system under test
-        final HttpSession.Deliverable deliverable = new HttpSession.Deliverable( packets );
+        final HttpSession.Deliverable deliverable = new HttpSession.Deliverable( packets);
         final String result = deliverable.getDeliverable();
 
         // verify results
