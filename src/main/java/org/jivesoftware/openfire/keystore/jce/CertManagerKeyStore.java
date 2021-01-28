@@ -23,9 +23,22 @@ import org.directtruststandards.timplus.common.cert.X509CertificateEx;
 import org.jivesoftware.openfire.XMPPServer;
 import org.jivesoftware.openfire.certificate.Certificate;
 import org.jivesoftware.openfire.certificate.CertificateManager;
+import org.jivesoftware.util.JiveGlobals;
 
 public class CertManagerKeyStore extends KeyStoreSpi
 {
+	public static final String SUPRESS_FULL_ALIAS_LOAD = "xmpp.server.certstore.supressfullaliasload";
+	
+	protected final boolean suppressFullAliasLoad;
+	
+    public CertManagerKeyStore()
+    {
+    	super();
+    	
+    	final String value = JiveGlobals.getProperty( SUPRESS_FULL_ALIAS_LOAD , "false");
+    	
+    	suppressFullAliasLoad = Boolean.parseBoolean(value);
+    }
 	
 	@Override
     public Key engineGetKey(String alias, char[] password)
@@ -136,13 +149,17 @@ public class CertManagerKeyStore extends KeyStoreSpi
 		
 		try
 		{
-			Collection<Certificate> certs = CertificateManager.getInstance().getCertificates();
-			
-			
-			for (Certificate cert : certs)
-				aliases.add(cert.getThumbprint());
-			
-			return Collections.enumeration(aliases);
+			if (!suppressFullAliasLoad)
+			{
+				Collection<Certificate> certs = CertificateManager.getInstance().getCertificates();
+				
+				for (Certificate cert : certs)
+					aliases.add(cert.getThumbprint());
+				
+				return Collections.enumeration(aliases);
+			}
+			else
+				return Collections.enumeration(Collections.singleton("dummy"));
 		}
 		catch (Exception e)
 		{

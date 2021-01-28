@@ -12,6 +12,7 @@ import java.security.spec.KeySpec;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 
@@ -22,12 +23,15 @@ import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.PBEKeySpec;
 
 import org.apache.commons.io.IOUtils;
+import org.apache.jcs.JCS;
+import org.apache.jcs.access.exception.CacheException;
 import org.directtruststandards.timplus.common.cert.CertStoreUtils;
 import org.directtruststandards.timplus.common.cert.CertStoreUtils.CertContainer;
 import org.directtruststandards.timplus.common.cert.CertUtils;
 import org.directtruststandards.timplus.common.crypto.KeyStoreProtectionManager;
 import org.directtruststandards.timplus.common.crypto.WrappableKeyProtectionManager;
 import org.jivesoftware.openfire.XMPPServer;
+import org.jivesoftware.util.JiveGlobals;
 import org.jivesoftware.util.PrivateKeyType;
 import org.jivesoftware.util.SystemProperty;
 import org.jivesoftware.util.SystemProperty.Builder;
@@ -36,12 +40,29 @@ import org.slf4j.LoggerFactory;
 
 public class CertificateManager
 {
+	public static final String XMPP_CERT_MANAGER_CACHE_MAX_ITEMS = "xmpp.certmanager.cache.maxitems";
+	
+	public static final String XMPP_CERT_MANAGER_CACHE_TTL = "xmpp.certmanager.cache.ttl";
+	
+	private static final String DOMAIN_CACHE_NAME = "CERTIFICATE_MANAGER_DOMAIN_CERT_CACHE";
+
+	private static final String TP_CACHE_NAME = "CERTIFICATE_MANAGER_TP_CERT_CACHE";
+	
+	protected static final String DEFAULT_DNS_MAX_CAHCE_ITEMS = "1000";
+	
+	protected static final String DEFAULT_DNS_TTL = "3600"; // 1 hour
+	
 	private static final int DNSName_TYPE = 2; // name type constant for Subject Alternative name domain name	
 	
 	private static final Logger Log = LoggerFactory.getLogger(CertificateManager.class);	
 	@SuppressWarnings("rawtypes")
 	public static final SystemProperty<Class> CERTIFICATE_PROVIDER;
+	
 	private static CertificateProvider provider;
+	
+	protected JCS domainCertCache;
+	
+	protected JCS tpCertCache;
 	
 	static
 	{
@@ -81,21 +102,111 @@ public class CertificateManager
     private CertificateManager() 
     {
     	initProvider(CERTIFICATE_PROVIDER.getValue());
+    	
+		createCaches();
     }
     
+	private void createCaches()
+	{
+		try
+		{
+			// create instances
+			domainCertCache = CertCacheFactory.getInstance().getCertCache(DOMAIN_CACHE_NAME, getDefaultCertCachePolicy());	
+			tpCertCache = CertCacheFactory.getInstance().getCertCache(TP_CACHE_NAME, getDefaultCertCachePolicy());	
+		}
+		///CLOVER:OFF
+		catch (CacheException e)
+		{
+			Log.warn("CertificateManager - Could not create certificate caches", e);
+		}
+		///CLOVER:ON
+	}    
+    
+	private synchronized JCS getDomainCache()
+	{
+		if (domainCertCache == null)
+			createCaches();
+		
+		return domainCertCache;
+	}
+	
+	private synchronized JCS getTPCache()
+	{
+		if (tpCertCache == null)
+			createCaches();
+		
+		return tpCertCache;
+	}
+	
     public Collection<Certificate> getCertificates() throws CertificateException
     {
     	return provider.getCertificates();
     }
     
-    public Collection<Certificate> getCertificatesByDomain(String domain) throws CertificateException
+    @SuppressWarnings("unchecked")
+	public Collection<Certificate> getCertificatesByDomain(String domain) throws CertificateException
     {
-    	return provider.getCertificatesByDomain(domain);
+    	Collection<Certificate> retVal = null;
+    	
+    	final JCS cache = getDomainCache();
+    	if (cache != null)
+    	{
+    		retVal = (Collection<Certificate>)cache.get(domain.toUpperCase());
+    	}
+    	
+    	if (cache == null || (retVal == null || retVal.size() == 0))
+    	{
+    		// cache miss
+    		retVal = provider.getCertificatesByDomain(domain);
+    		
+    		if (retVal != null && retVal.size() != 0)
+    		{
+    			try
+    			{
+    				cache.put(domain.toUpperCase(), retVal);
+    			}
+    			catch (Exception e)
+    			{
+    				Log.warn("Failed to insert certificates into domain cache.", e);
+    			}
+    		}
+    	}
+    	
+    	return retVal;
     }
     
-    public Certificate getCertificateByThumbprint(String thumbprint) throws CertificateException
+    @SuppressWarnings("unchecked")
+	public Certificate getCertificateByThumbprint(String thumbprint) throws CertificateException
     {
-    	return provider.getCertificateByThumbprint(thumbprint);
+    	Certificate retVal = null;
+    	
+    	final JCS cache = getTPCache();
+    	if (cache != null)
+    	{
+    		Collection<Certificate> cacheCert = (Collection<Certificate>)cache.get(thumbprint.toUpperCase());
+    		if (cacheCert != null && cacheCert.size() > 0)
+    			retVal = cacheCert.iterator().next();
+    	}
+    	
+    	if (cache == null || retVal == null)
+    	{
+    		// cache miss
+    		retVal = provider.getCertificateByThumbprint(thumbprint);
+    		
+    		if (retVal != null)
+    		{
+    			try
+    			{
+    				cache.put(thumbprint.toUpperCase(), Collections.singleton(retVal));
+    			}
+    			catch (Exception e)
+    			{
+    				Log.warn("Failed to insert certificate into thumbprint cache.", e);
+    			}
+    		}
+    	}
+    	
+    	return retVal;    	
     }
     
     public Certificate addCertificate(Certificate cert) throws CertificateException
@@ -301,4 +412,35 @@ public class CertificateManager
     	
     	return String.join(",", domains);
 	}
+	
+	private CertStoreCachePolicy getDefaultCertCachePolicy()
+	{
+		return new DefaultCertManagerCachePolicy();
+	}
+	
+	public static class DefaultCertManagerCachePolicy implements CertStoreCachePolicy
+	{
+		protected final int maxItems;
+		protected final int subjectTTL;
+		
+		public DefaultCertManagerCachePolicy()
+		{
+			final String maxItemsString = JiveGlobals.getProperty(XMPP_CERT_MANAGER_CACHE_MAX_ITEMS, DEFAULT_DNS_MAX_CAHCE_ITEMS);
+			maxItems =  Integer.parseInt(maxItemsString);
+			
+			final String maxTTLString = JiveGlobals.getProperty(XMPP_CERT_MANAGER_CACHE_TTL, DEFAULT_DNS_TTL);
+			subjectTTL =  Integer.parseInt(maxTTLString);
+		}
+		
+		public int getMaxItems() 
+		{
+			return maxItems;
+		}
+
+		public int getSubjectTTL() 
+		{
+			return subjectTTL;
+		}
+		
+	}	
 }

@@ -435,7 +435,15 @@ public class ConnectionListener
         }
         else
         {
-            final String value = JiveGlobals.getProperty( clientAuthPolicyPropertyName, getDefaultClientAuth().name() );
+            /* 
+             * looking up the default value using "getDefaultClientAuth" if not needed can be VERY
+             * expensive especially if there are a larger number of certificates in the identity store
+             * Do the fall back to the default value manually
+             */
+        	String value = JiveGlobals.getProperty( clientAuthPolicyPropertyName );
+        	if (value == null)
+        		value = getDefaultClientAuth().name();
+        	
             try
             {
                 clientAuth = Connection.ClientAuth.valueOf( value );
