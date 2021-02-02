@@ -53,6 +53,8 @@ import org.slf4j.LoggerFactory;
  */
 public class PluginMonitor implements PropertyEventListener
 {
+	public static final String XMPP_DISABLE_ADMIN_CONSOLE = "admin.webconsole.disable";
+	
     private static final Logger Log = LoggerFactory.getLogger( PluginMonitor.class );
 
     private final PluginManager pluginManager;
@@ -371,9 +373,15 @@ public class PluginMonitor implements PropertyEventListener
                                         final String canonicalName = PluginMetadataHelper.getCanonicalName( path );
                                         if ( pluginManager.getPlugin( canonicalName ) == null )
                                         {
-                                            if ( pluginManager.loadPlugin( canonicalName, path ) )
+                                            final String disableAdminConsoleStr = 
+                                            		JiveGlobals.getProperty(XMPP_DISABLE_ADMIN_CONSOLE, "false"); 
+                                            boolean disableConsole = Boolean.parseBoolean(disableAdminConsoleStr);
+                                            if (!canonicalName.equals("admin") || !disableConsole)
                                             {
-                                                loaded++;
+	                                            if ( pluginManager.loadPlugin( canonicalName, path ) )
+	                                            {
+	                                                loaded++;
+	                                            }
                                             }
                                         }
                                     }
@@ -385,7 +393,10 @@ public class PluginMonitor implements PropertyEventListener
 
                         // Before running any plugin, make sure that the admin plugin is loaded. It is a dependency
                         // of all plugins that attempt to modify the admin panel.
-                        if ( pluginManager.getPlugin( "admin" ) == null )
+                        final String disableAdminConsoleStr = 
+                        		JiveGlobals.getProperty(XMPP_DISABLE_ADMIN_CONSOLE, "false"); 
+                        boolean disableConsole = Boolean.parseBoolean(disableAdminConsoleStr);
+                        if ( pluginManager.getPlugin( "admin" ) == null && !disableConsole)
                         {
                             pluginManager.loadPlugin( "admin", dirs.getFirst().get( 0 ) );
                         }
