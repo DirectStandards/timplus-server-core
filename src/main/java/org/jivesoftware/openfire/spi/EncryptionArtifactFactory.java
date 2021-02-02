@@ -207,6 +207,12 @@ public class EncryptionArtifactFactory
             sslEngine.setEnabledCipherSuites( cipherSuites.toArray( new String[ cipherSuites.size() ] ) );
         }
 
+        // prefer the server's cipher suites over the clients
+        final SSLParameters params = sslEngine.getSSLParameters();
+        params.setUseCipherSuitesOrder(true);
+        
+        sslEngine.setSSLParameters(params);
+        
         return sslEngine;
     }
 

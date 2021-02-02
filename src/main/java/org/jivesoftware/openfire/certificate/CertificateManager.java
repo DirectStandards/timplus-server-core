@@ -48,9 +48,9 @@ public class CertificateManager
 
 	private static final String TP_CACHE_NAME = "CERTIFICATE_MANAGER_TP_CERT_CACHE";
 	
-	protected static final String DEFAULT_DNS_MAX_CAHCE_ITEMS = "1000";
+	protected static final String DEFAULT_MAX_CAHCE_ITEMS = "1000";
 	
-	protected static final String DEFAULT_DNS_TTL = "3600"; // 1 hour
+	protected static final String DEFAULT_CACHE_TTL = "3600"; // 1 hour
 	
 	private static final int DNSName_TYPE = 2; // name type constant for Subject Alternative name domain name	
 	
@@ -425,10 +425,10 @@ public class CertificateManager
 		
 		public DefaultCertManagerCachePolicy()
 		{
-			final String maxItemsString = JiveGlobals.getProperty(XMPP_CERT_MANAGER_CACHE_MAX_ITEMS, DEFAULT_DNS_MAX_CAHCE_ITEMS);
+			final String maxItemsString = JiveGlobals.getProperty(XMPP_CERT_MANAGER_CACHE_MAX_ITEMS, DEFAULT_MAX_CAHCE_ITEMS);
 			maxItems =  Integer.parseInt(maxItemsString);
 			
-			final String maxTTLString = JiveGlobals.getProperty(XMPP_CERT_MANAGER_CACHE_TTL, DEFAULT_DNS_TTL);
+			final String maxTTLString = JiveGlobals.getProperty(XMPP_CERT_MANAGER_CACHE_TTL, DEFAULT_CACHE_TTL);
 			subjectTTL =  Integer.parseInt(maxTTLString);
 		}
 		
