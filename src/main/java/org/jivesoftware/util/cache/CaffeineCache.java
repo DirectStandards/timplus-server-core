@@ -23,6 +23,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
+import org.jivesoftware.openfire.cluster.NodeID;
+
 /**
  * Wraps an instance of Ben Manes' Caffeine cache in a class that inherits from
  * {@link Cache}. This implementation intends to make Caffeine caches compatible
@@ -493,4 +495,10 @@ public class CaffeineCache<K extends Serializable, V extends Serializable> imple
     {
         return Collections.unmodifiableSet( cache.asMap().keySet() );
     }
+    
+    @Override
+    public void purgeClusteredNodeCaches(NodeID node)
+    {
+    	
+    } 
 }

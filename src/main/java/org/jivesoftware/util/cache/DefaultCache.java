@@ -25,6 +25,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
+import org.jivesoftware.openfire.cluster.NodeID;
 import org.jivesoftware.util.JiveGlobals;
 import org.jivesoftware.util.LinkedListNode;
 import org.jivesoftware.util.StringUtils;
@@ -640,5 +641,11 @@ public class DefaultCache<K extends Serializable, V extends Serializable> implem
                 throw e;
             }
         }
+    }
+    
+    @Override
+    public void purgeClusteredNodeCaches(NodeID node)
+    {
+    	
     }
 }

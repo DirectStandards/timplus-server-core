@@ -23,6 +23,8 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Lock;
 
+import org.jivesoftware.openfire.cluster.NodeID;
+
 /**
  * General purpose cache. It stores objects associated with unique keys in
  * memory for fast access. All keys and values added to the cache must
@@ -236,4 +238,10 @@ public interface Cache<K extends Serializable, V extends Serializable> extends j
     default boolean isValueSecret() {
         return this.secretValue.get();
     }
+    
+    /**
+     * Purges all caches on a node within a clusters
+     * @param node The node whose caches will be purged.
+     */
+    void purgeClusteredNodeCaches(NodeID node);
 }

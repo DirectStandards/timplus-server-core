@@ -21,6 +21,8 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
 
+import org.jivesoftware.openfire.cluster.NodeID;
+
 /**
  * Acts as a proxy for a Cache implementation. The Cache implementation can be switched on the fly,
  * which enables users to hold a reference to a CacheWrapper object, but for the underlying
@@ -157,4 +159,9 @@ public class CacheWrapper<K extends Serializable, V extends Serializable> implem
         return cache.put(key, value);
     }
 
+    @Override
+    public void purgeClusteredNodeCaches(NodeID node)
+    {
+    	
+    }
 }

@@ -36,7 +36,7 @@ public interface RemotePacketRouter {
      * @param packet the packet to send.
      * @return true if the remote node was found.
      */
-    boolean routePacket(byte[] nodeID, JID receipient, Packet packet);
+	PacketRouteStatus routePacket(byte[] nodeID, JID receipient, Packet packet);
 
     /**
      * Brodcasts the specified message to all local client sessions of each cluster node.

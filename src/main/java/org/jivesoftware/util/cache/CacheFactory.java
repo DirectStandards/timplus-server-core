@@ -32,6 +32,7 @@ import org.jivesoftware.openfire.XMPPServerListener;
 import org.jivesoftware.openfire.cluster.ClusterEventListener;
 import org.jivesoftware.openfire.cluster.ClusterManager;
 import org.jivesoftware.openfire.cluster.ClusterNodeInfo;
+import org.jivesoftware.openfire.cluster.NodeID;
 import org.jivesoftware.openfire.container.Plugin;
 import org.jivesoftware.openfire.container.PluginClassLoader;
 import org.jivesoftware.openfire.container.PluginManager;
@@ -105,7 +106,7 @@ public class CacheFactory {
         localCacheFactoryClass = JiveGlobals.getProperty(LOCAL_CACHE_PROPERTY_NAME,
                 "org.jivesoftware.util.cache.DefaultLocalCacheStrategy");
         clusteredCacheFactoryClass = JiveGlobals.getProperty(CLUSTERED_CACHE_PROPERTY_NAME,
-                "org.jivesoftware.openfire.plugin.util.cache.ClusteredCacheFactory");
+                "org.jivesoftware.util.cache.ClusteredCacheFactory");
 
         cacheNames.put("Favicon Hits", "faviconHits");
         cacheNames.put("Favicon Misses", "faviconMisses");
@@ -557,7 +558,7 @@ public class CacheFactory {
      * @return true if clustering is installed and can be used by
      * this JVM to join a cluster.
      */
-    public static boolean isClusteringAvailable() {
+    public static synchronized boolean isClusteringAvailable() {
         if (clusteredCacheFactoryStrategy == null) {
             try {
                 clusteredCacheFactoryStrategy = (CacheFactoryStrategy) Class.forName(
@@ -788,7 +789,7 @@ public class CacheFactory {
         }
     }
 
-    public static void startClustering() {
+    public static synchronized void startClustering() {
         if (isClusteringAvailable()) {
             clusteringStarting = true;
             clusteringStarted = clusteredCacheFactoryStrategy.startCluster();
@@ -859,7 +860,7 @@ public class CacheFactory {
         }
     }
 
-    public static void stopClustering() {
+    public static synchronized void stopClustering() {
         // Stop the cluster
         clusteredCacheFactoryStrategy.stopCluster();
         clusteredCacheFactoryStrategy = null;
@@ -922,6 +923,22 @@ public class CacheFactory {
      */
     private static boolean isClusterableCache(final Cache cache) {
         return cache instanceof CacheWrapper && !localOnly.contains(cache.getName());
+    }
+    
+    
+    /**
+     * Purges all caches on a node within a clusters
+     * @param node The node whose caches will be purged.
+     */
+    public static void purgeClusteredNodeCaches(NodeID node)
+    {
+    	if (clusteringStarted)
+    	{
+            for (String cacheName : caches.keySet()) {
+                Cache cache = caches.get(cacheName);
+                cache.purgeClusteredNodeCaches(node);
+            }
+    	}
     }
 
 }

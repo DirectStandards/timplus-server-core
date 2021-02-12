@@ -16,7 +16,11 @@
 
 package org.jivesoftware.openfire.cluster;
 
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Optional;
@@ -32,7 +36,9 @@ import org.jivesoftware.util.JiveGlobals;
 import org.jivesoftware.util.JiveProperties;
 import org.jivesoftware.util.PropertyEventDispatcher;
 import org.jivesoftware.util.PropertyEventListener;
+import org.jivesoftware.util.SystemProperty;
 import org.jivesoftware.util.TaskEngine;
+import org.jivesoftware.util.SystemProperty.Builder;
 import org.jivesoftware.util.cache.CacheFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,22 +53,49 @@ public class ClusterManager {
     
     private static final Logger Log = LoggerFactory.getLogger(ClusterManager.class);
 
+    /*
+     * Default heart beat threshold in seconds.
+     */
+    protected static final int DEFAULT_HEARTBEAT_THRESHOLD = 130;
+    
+    /*
+     * Default heartbeat interval in seconds.
+     */
+    protected static final int DEFAULT_HEARTBEAT_INTERVAL = 60;
+    
     public static String CLUSTER_PROPERTY_NAME = "clustering.enabled";
+    
+    public static String CLUSTER_HEARTBEAT_THRESHOLD_NAME = "clustering.heartbeat.evictionThreshold";
+    
+    public static String CLUSTER_HEARTBEAT_INTERVAL_NAME = "clustering.heartbeat.interval";
+    
     private static Queue<ClusterEventListener> listeners = new ConcurrentLinkedQueue<>();
     private static BlockingQueue<Event> events = new LinkedBlockingQueue<>(10000);
     private static Thread dispatcher;
-
-    static {
-        // Listen for clustering property changes (e.g. enabled/disabled)
+    private static Thread clusterHeartBeatThread;
+    
+    
+    
+	@SuppressWarnings("rawtypes")
+	public static final SystemProperty<Class> CLUSTER_NODE_PROVIDER;
+	
+	private static ClusterNodeProvider provider;
+      
+    
+    static 
+    {
+    	CLUSTER_NODE_PROVIDER = Builder.ofType(Class.class)
+				.setKey("provider.clusternode.className").setBaseClass(ClusterNodeProvider.class)
+				.setDefaultValue(DefaultClusterNodeProvider.class).addListener(ClusterManager::initProvider).setDynamic(true)
+				.build();
+    	
+		initProvider(CLUSTER_NODE_PROVIDER.getValue());
+		
+    	// Listen for clustering property changes (e.g. enabled/disabled)
         PropertyEventDispatcher.addListener(new PropertyEventListener() {
             @Override
-            public void propertySet(String property, Map<String, Object> params) { /* ignore */ }
-            @Override
-            public void propertyDeleted(String property, Map<String, Object> params) { /* ignore */ }
-            @Override
-            public void xmlPropertyDeleted(String property, Map<String, Object> params) { /* ignore */ }
-            @Override
-            public void xmlPropertySet(final String property, final Map<String, Object> params) {
+            public void propertySet(String property, Map<String, Object> params)
+            {
                 if (ClusterManager.CLUSTER_PROPERTY_NAME.equals(property)) {
                     TaskEngine.getInstance().submit(new Runnable() {
                         @Override
@@ -77,34 +110,73 @@ public class ClusterManager {
                         }
                     });
                 }
-            }
+            }          
+
+            @Override
+            public void propertyDeleted(String property, Map<String, Object> params) { /* ignore */ }
+            @Override
+            public void xmlPropertyDeleted(String property, Map<String, Object> params) { /* ignore */ }
+            @Override
+            public void xmlPropertySet(final String property, final Map<String, Object> params) { /* ignore */ } 
         });
+    }
+    
+    private static void initProvider(final Class<?> clazz) 
+    {
+        if (provider == null || !clazz.equals(provider.getClass())) 
+        {
+            try 
+            {
+                provider = (ClusterNodeProvider) clazz.newInstance();
+            }
+            catch (final Exception e) 
+            {
+                Log.error("Error loading domain provider: " + clazz.getName(), e);
+                provider = new DefaultClusterNodeProvider();
+            }
+        }
+    }
+    
+    public static ClusterNodeProvider getClusterNodeProvider()
+    {
+    	return provider;
     }
     
     /**
      * Instantiate and start the cluster event dispatcher thread
      */
-    private static void initEventDispatcher() {
-        if (dispatcher == null || !dispatcher.isAlive()) {
-            dispatcher = new Thread("ClusterManager events dispatcher") {
+    private static void initEventDispatcher() 
+    {
+        if (dispatcher == null || !dispatcher.isAlive()) 
+        {
+            dispatcher = new Thread("ClusterManager events dispatcher") 
+            {
                 @Override
-                public void run() {
+                public void run() 
+                {
                     // exit thread if/when clustering is disabled
-                    while (ClusterManager.isClusteringEnabled()) {
-                        try {
+                    while (ClusterManager.isClusteringEnabled()) 
+                    {
+                        try 
+                        {
                             Event event = events.take();
                             EventType eventType = event.getType();
                             // Make sure that CacheFactory is getting this events first (to update cache structure)
-                            if (event.getNodeID() == null) {
+                            if (event.getNodeID() == null) 
+                            {
                                 // Replace standalone caches with clustered caches and migrate data
-                                if (eventType == EventType.joined_cluster) {
+                                if (eventType == EventType.joined_cluster) 
+                                {
                                     CacheFactory.joinedCluster();
-                                } else if (eventType == EventType.left_cluster) {
+                                } 
+                                else if (eventType == EventType.left_cluster) 
+                                {
                                     CacheFactory.leftCluster();
                                 }
                             }
                             // Now notify rest of the listeners
-                            for (ClusterEventListener listener : listeners) {
+                            for (ClusterEventListener listener : listeners) 
+                            {
                                 try {
                                     switch (eventType) {
                                         case joined_cluster: {
@@ -150,6 +222,154 @@ public class ClusterManager {
         }
     }
 
+    private static void initCusterHeartBeatMonitor()
+    {
+        if (clusterHeartBeatThread == null || !clusterHeartBeatThread.isAlive()) 
+        {
+        	clusterHeartBeatThread = new Thread("ClusterManager cluster heart beat thread") 
+            {
+                @Override
+                public void run() 
+                {
+                	int heartBeatThreshold = JiveGlobals.getIntProperty(CLUSTER_HEARTBEAT_THRESHOLD_NAME, DEFAULT_HEARTBEAT_THRESHOLD);
+                	int heartBeatInterval = JiveGlobals.getIntProperty(CLUSTER_HEARTBEAT_INTERVAL_NAME, DEFAULT_HEARTBEAT_INTERVAL);
+                	
+                    // exit thread if/when clustering is disabled
+                    while (ClusterManager.isClusteringEnabled()) 
+                    {
+	                	try
+	                	{	                		
+		                	// first check if we exist in the cluster
+	                		ClusterNode me = null;
+	                		try
+	                		{
+	                			me = provider.getClusterMember(XMPPServer.getInstance().getNodeID());
+	                		}
+	                		catch (ClusterNodeNotFoundException e)
+	                		{
+	                			me = joinCluster();
+	                		}
+	                		
+	                		// make sure we're listed as active
+	                		if (me.getNodeStatus() != ClusterNodeStatus.NODE_JOINED && me.getNodeStatus() != ClusterNodeStatus.NODE_MASTER)
+	                		{
+	                			// active me
+	                			me.setNodeStatus(ClusterNodeStatus.NODE_JOINED);
+	                			provider.updateClusterMember(me);
+	                			
+	                			// we rejoined the cluster
+	                			fireJoinedCluster(true);
+	                		}
+	                			
+	                		// heart beat
+	                		me = provider.heartBeatClusterMemeber(me.getNodeId());
+	                		
+		                	/*
+		                	 * get the full list of cluster entries, this should be a small list (probably less than 10)
+		                	 * and see if anyone needs to be evicted... also check for the master and update if needed
+		                	 */
+		                	Collection<ClusterNode> clusterNodes = provider.getClusterMembers();
+		                	
+		                	final Instant hbThreadshold = Instant.now().minus(heartBeatThreshold, ChronoUnit.SECONDS);
+		                	
+		                	ClusterNode masterNode = null;
+		                	boolean duplicateMastersDetected = false;
+		                	for (ClusterNode node : clusterNodes)
+		                	{
+		                		if (node.getLastNodeHBDtTm().compareTo(hbThreadshold) < 0)
+		                		{
+		                			// evict
+		                			Log.info("Evicting cluster node {} due to lack of heart beat.", node.getNodeId().toString());
+		                			node.setNodeLeftDtTm(Instant.now());
+		                			node.setNodeStatus(ClusterNodeStatus.NODE_EVICTED);
+		                			provider.updateClusterMember(node);
+		                			
+		                			CacheFactory.purgeClusteredNodeCaches(node.getNodeId());
+		                			
+		                			fireLeftCluster(node.getNodeId().toByteArray());
+		                			
+		                			
+		                		}
+		                		else if (node.getNodeStatus() == ClusterNodeStatus.NODE_MASTER)
+		                		{
+		                			// is there already a master in the list?
+		                			if (masterNode != null)
+		                				duplicateMastersDetected = true;
+		                			else  // no existing master detected... mark this node as the master
+		                				masterNode = node;
+		                		}
+		                		
+		                	}
+		                	
+		                	/*
+		                	 *  check if a master node is detected or if there is a duplicate master... It's possible there is no master if we either
+		                	 *  evicted the master or this is the first node in the cluster that is just now coming on line
+		                	 */
+		                	if (masterNode == null || duplicateMastersDetected)
+		                	{
+		                		
+		                		/*
+		                		 * The master will be selected by being the node that has been in the cluster the longest
+		                		 * Reload the cluster list (in case we evicted somebody)
+		                		 */
+		                		clusterNodes = provider.getClusterMembers();
+		                		for (ClusterNode node : clusterNodes)
+		                		{
+		                			if (masterNode == null)
+		                				masterNode = node;
+		                			else if (node.getNodeJoinedDtTm().compareTo(masterNode.getNodeJoinedDtTm()) < 0)
+		                			{
+		                				masterNode = node;
+		                			}
+		                		}
+		                		
+		                		/*
+		                		 *  check if there are duplicate masters... if there are, then we need to demote 
+		                		 *  one or more duplicates
+		                		 */
+		                		if (duplicateMastersDetected)
+		                		{
+		                			for (ClusterNode node : clusterNodes)
+		                			{
+		                				if (node.getNodeStatus().equals(ClusterNodeStatus.NODE_MASTER) && !node.getNodeId().equals(masterNode.getNodeId()))
+		                				{
+		                					// demote this master to just a cluster member
+		                					node.setNodeStatus(ClusterNodeStatus.NODE_JOINED);
+		                					provider.updateClusterMember(node);
+		                				}
+		                			}
+		                		}
+		                		
+		                		/*
+		                		 * Promote the master node
+		                		 */
+		                		Log.info("Promoting cluster node {} to the master node.", masterNode.getNodeId().toString());
+		                		masterNode.setNodeStatus(ClusterNodeStatus.NODE_MASTER);
+		                		provider.updateClusterMember(masterNode);
+		                		
+		                		fireMarkedAsSeniorClusterMember();
+		                	}
+		               
+	                	}
+	                	catch (ClusterException e)
+	                	{
+	                		Log.error("Failed to perform cluster heartbeat operation.", e);
+	                	}
+	                	
+	                	// sleep for the amount specified by the heart beat interval
+	                	try
+	                	{
+	                		Thread.sleep(heartBeatInterval * 1000);
+	                	}
+	                	catch (Exception e)  {/* no-op */}
+                    }
+                }
+            };
+        }
+        clusterHeartBeatThread.setDaemon(true);
+        clusterHeartBeatThread.start();
+    }
+    
     /**
      * Registers a listener to receive events.
      *
@@ -296,8 +516,10 @@ public class ClusterManager {
      */
     public static synchronized void startup() {
         if (isClusteringEnabled() && !isClusteringStarted()) {
-            initEventDispatcher();
+            
+        	initEventDispatcher();
             CacheFactory.startClustering();
+            initCusterHeartBeatMonitor();
         }
     }
 
@@ -309,7 +531,18 @@ public class ClusterManager {
      * If clustering is not enabled, this method will do nothing.
      */
     public static synchronized void shutdown() {
-        if (isClusteringStarted()) {
+        if (isClusteringStarted()) 
+        {
+        	try
+        	{
+        		leaveCluster();
+        	}
+        	catch (Exception e)
+        	{
+        		Log.error("Error occured while node {} tried to leave the cluster.", XMPPServer.getInstance().getNodeID().toString(), e);
+        	}
+        	
+        	
             Log.debug("ClusterManager: Shutting down clustered cache service.");
             CacheFactory.stopClustering();
         }
@@ -336,7 +569,7 @@ public class ClusterManager {
             }
         }
         // set the clustering property (listener will start/stop as needed)
-        JiveGlobals.setXMLProperty(CLUSTER_PROPERTY_NAME, Boolean.toString(enabled));
+        JiveGlobals.setProperty(CLUSTER_PROPERTY_NAME, Boolean.toString(enabled));
     }
 
     /**
@@ -346,7 +579,7 @@ public class ClusterManager {
      * @return true if clustering support is enabled.
      */
     public static boolean isClusteringEnabled() {
-        return JiveGlobals.getXMLProperty(CLUSTER_PROPERTY_NAME, false);
+        return JiveGlobals.getBooleanProperty(CLUSTER_PROPERTY_NAME, false);
     }
 
     /**
@@ -483,7 +716,6 @@ public class ClusterManager {
      * @throws InterruptedException if the thread is interrupted whilst waiting for clustering to start
      * @since Openfire 4.3.0
      */
-    @SuppressWarnings("WeakerAccess")
     public static void waitForClusteringToStart() throws InterruptedException {
         if (!ClusterManager.isClusteringEnabled()) {
             // Clustering is not enabled, so return immediately
@@ -540,7 +772,6 @@ public class ClusterManager {
      * @see #isSeniorClusterMember()
      * @since Openfire 4.3.0
      */
-    @SuppressWarnings({"unused", "WeakerAccess"})
     public static boolean isSeniorClusterMemberOrNotClustered() {
         try {
             ClusterManager.waitForClusteringToStart();
@@ -552,6 +783,43 @@ public class ClusterManager {
         }
     }
 
+    protected static ClusterNode joinCluster() throws ClusterException
+    {
+    	try
+    	{
+    		final Instant now = Instant.now();
+    		
+    		final ClusterNode node = new ClusterNode();
+    		node.setNodeId(XMPPServer.getInstance().getNodeID());
+    		node.setNodeHost(InetAddress.getLocalHost().getCanonicalHostName());
+    		node.setNodeIP(InetAddress.getLocalHost().getHostAddress());
+    		node.setNodeStatus(ClusterNodeStatus.NODE_JOINED);
+    		node.setNodeJoinedDtTm(now);
+    		node.setLastNodeHBDtTm(now);
+    		
+    		provider.addClusterMember(node);
+    		fireJoinedCluster(true);
+    		
+    		return node;
+    		
+    	}
+    	catch (UnknownHostException e)
+    	{
+    		throw new ClusterException("Failed to get host ip address while joining cluster.", e);
+    	}
+    }
+    
+    protected static void leaveCluster() throws ClusterException
+    {
+    	final ClusterNode node = provider.getClusterMember(XMPPServer.getInstance().getNodeID());
+    	
+    	node.setNodeLeftDtTm(Instant.now());
+    	node.setNodeStatus(ClusterNodeStatus.NODE_LEFT);
+    	provider.updateClusterMember(node);
+    	
+    	fireLeftCluster();
+    }
+    
 
     private static class Event {
         private EventType type;

@@ -18,6 +18,7 @@ package org.jivesoftware.util.cache;
 
 import org.jivesoftware.openfire.XMPPServer;
 import org.jivesoftware.openfire.cluster.ClusterNodeInfo;
+import org.jivesoftware.openfire.cluster.NodeID;
 
 import java.util.Collection;
 import java.util.Collections;

@@ -208,6 +208,10 @@ public class CacheUtil
 
                 final C elements = entry.getValue();
 
+                if ( elements == null ) {
+                    continue;
+                }
+                
                 // Remove all instances of the element from the entry value.
                 boolean changed = false;
                 while ( elements.remove( element ) )
