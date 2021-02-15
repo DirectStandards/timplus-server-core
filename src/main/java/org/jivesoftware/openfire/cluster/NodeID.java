@@ -68,10 +68,20 @@ public class NodeID implements Externalizable {
     public NodeID() {
     }
 
-    private NodeID(byte[] nodeIdBytes) {
+    public NodeID(byte[] nodeIdBytes) {
         this.nodeID = nodeIdBytes;
     }
 
+    public void setNodeIDBytes(byte[] nodeIDByte)
+    {
+    	this.nodeID = nodeIDByte;
+    }
+
+    public byte[] getNodeIDBytes()
+    {
+    	return nodeID;
+    }    
+    
     public boolean equals(byte[] anotherID) {
         return Arrays.equals(nodeID, anotherID);
     }

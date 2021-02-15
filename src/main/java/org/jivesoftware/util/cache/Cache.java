@@ -51,7 +51,7 @@ import org.jivesoftware.openfire.cluster.NodeID;
  *
  * @see Cacheable
  */
-public interface Cache<K extends Serializable, V extends Serializable> extends java.util.Map<K, V> {
+public interface Cache<K, V> extends java.util.Map<K, V> {
 
     /**
      * Returns the name of the cache.

@@ -41,10 +41,7 @@ import org.slf4j.LoggerFactory;
 import org.xmpp.packet.*;
 
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.Lock;
-import java.util.function.Function;
-import java.util.function.Predicate;
 
 /**
  * Routing table that stores routes to client sessions, outgoing server sessions
@@ -81,7 +78,7 @@ public class RoutingTableImpl extends BasicModule implements RoutingTable, Clust
      * Cache (unlimited, never expire) that holds components connected to the server.
      * Key: component domain, Value: list of nodeIDs hosting the component
      */
-    private Cache<String, LinkedList<NodeID>> componentsCache;
+    private Cache<String, ArrayList<NodeID>> componentsCache;
     /**
      * Cache (unlimited, never expire) that holds sessions of user that have authenticated with the server.
      * Key: full JID, Value: {nodeID, available/unavailable}
@@ -97,7 +94,7 @@ public class RoutingTableImpl extends BasicModule implements RoutingTable, Clust
      * (includes anonymous).
      * Key: bare JID, Value: set of full JIDs of the user
      */
-    private Cache<String, LinkedList<String>> usersSessions;
+    private Cache<String, ArrayList<String>> usersSessions;
 
     private String serverName;
     private XMPPServer server;
@@ -139,9 +136,9 @@ public class RoutingTableImpl extends BasicModule implements RoutingTable, Clust
         Lock lock = CacheFactory.getLock(address, componentsCache);
         try {
             lock.lock();
-            LinkedList<NodeID> nodes = componentsCache.get(address);
+            ArrayList<NodeID> nodes = componentsCache.get(address);
             if (nodes == null) {
-                nodes = new LinkedList<>();
+                nodes = new ArrayList<>();
             }
             nodes.add(server.getNodeID());
             componentsCache.put(address, nodes);
@@ -171,7 +168,7 @@ public class RoutingTableImpl extends BasicModule implements RoutingTable, Clust
                 Lock lock = CacheFactory.getLock(route.toBareJID(), usersSessions);
                 try {
                     lock.lock();
-                    usersSessions.put(route.toBareJID(), new LinkedList<>(Collections.singletonList(route.toString())));
+                    usersSessions.put(route.toBareJID(), new ArrayList<>(Collections.singletonList(route.toString())));
                 }
                 finally {
                     lock.unlock();
@@ -192,9 +189,9 @@ public class RoutingTableImpl extends BasicModule implements RoutingTable, Clust
                 Lock lock = CacheFactory.getLock(route.toBareJID(), usersSessions);
                 try {
                     lock.lock();
-                    LinkedList<String> jids = usersSessions.get(route.toBareJID());
+                    ArrayList<String> jids = usersSessions.get(route.toBareJID());
                     if (jids == null) {
-                        jids = new LinkedList<>();
+                        jids = new ArrayList<>();
                     }
                     jids.add(route.toString());
                     usersSessions.put(route.toBareJID(), jids);
@@ -984,7 +981,7 @@ public class RoutingTableImpl extends BasicModule implements RoutingTable, Clust
                     usersSessions.remove(route.toBareJID());
                 }
                 else {
-                	LinkedList<String> jids = usersSessions.get(route.toBareJID());
+                	ArrayList<String> jids = usersSessions.get(route.toBareJID());
                     if (jids != null) {
                         jids.remove(route.toString());
                         if (!jids.isEmpty()) {
@@ -1037,7 +1034,7 @@ public class RoutingTableImpl extends BasicModule implements RoutingTable, Clust
         Lock lock = CacheFactory.getLock(address, componentsCache);
         try {
             lock.lock();
-            LinkedList<NodeID> nodes = componentsCache.get(address);
+            ArrayList<NodeID> nodes = componentsCache.get(address);
             if (nodes != null) {
                 removed = nodes.remove(nodeID);
                 if (nodes.isEmpty()) {
@@ -1161,7 +1158,7 @@ public class RoutingTableImpl extends BasicModule implements RoutingTable, Clust
             } );
 
             // Drop component routes from all other nodes.
-            final Map<Boolean, Map<String, LinkedList<NodeID>>> modified = CacheUtil.retainValueInMultiValuedCache( componentsCache, defaultNodeID );
+            final Map<Boolean, Map<String, ArrayList<NodeID>>> modified = CacheUtil.retainValueInMultiValuedCache( componentsCache, defaultNodeID );
             modified.get( false ).keySet().forEach( removedComponentDomain -> {
                 Log.debug( "The local cluster node left the cluster. The component session for '{}' was living on one (or more) other cluster nodes, and is no longer available.", removedComponentDomain );
                 localRoutingTable.removeRoute(new DomainPair("", removedComponentDomain ));
@@ -1236,7 +1233,7 @@ public class RoutingTableImpl extends BasicModule implements RoutingTable, Clust
         } );
 
         // remove component routes for the defunct node
-        final Map<Boolean, Map<String, LinkedList<NodeID>>> modifiedComponents = CacheUtil.removeValueFromMultiValuedCache( componentsCache, NodeID.getInstance( nodeID ) );
+        final Map<Boolean, Map<String, ArrayList<NodeID>>> modifiedComponents = CacheUtil.removeValueFromMultiValuedCache( componentsCache, NodeID.getInstance( nodeID ) );
         modifiedComponents.get( false ).keySet().forEach( removedComponentDomain -> {
             Log.debug( "Cluster node {} just left the cluster, and was the only node on which the external component session for '{}' was living. This route will be removed", NodeID.getInstance( nodeID ), removedComponentDomain );
             localRoutingTable.removeRoute(new DomainPair("", removedComponentDomain ));
