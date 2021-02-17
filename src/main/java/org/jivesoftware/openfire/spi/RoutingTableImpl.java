@@ -68,7 +68,8 @@ public class RoutingTableImpl extends BasicModule implements RoutingTable, Clust
     public static final String S2S_CACHE_NAME = "Routing Servers Cache";
     public static final String COMPONENT_CACHE_NAME = "Routing Components Cache";
     public static final String C2S_SESSION_NAME = "Routing User Sessions";
-
+    public static final String LOCAL_C2S_SESSION_NAME = "Local Routing User Sessions";
+    
     /**
      * Cache (unlimited, never expire) that holds outgoing sessions to remote servers from this server.
      * Key: server domain pair, Value: nodeID
@@ -90,12 +91,21 @@ public class RoutingTableImpl extends BasicModule implements RoutingTable, Clust
      */
     private Cache<String, ClientRoute> anonymousUsersCache;
     /**
-     * Cache (unlimited, never expire) that holds set of connected resources of authenticated users
+     * Cache (unlimited, never expire) that holds set of connected resources of authenticated users across all
+     * nodes in the cluster.
      * (includes anonymous).
      * Key: bare JID, Value: set of full JIDs of the user
      */
     private Cache<String, ArrayList<String>> usersSessions;
 
+    /**
+     * Cache (unlimited, never expire) that holds set of connected resources of authenticated users that 
+     * are connected to this specific node in the cluster.
+     * (includes anonymous).
+     * Key: bare JID, Value: set of full JIDs of the user
+     */
+    private Cache<String, ArrayList<String>> localUsersSessions;    
+    
     private String serverName;
     private XMPPServer server;
     private LocalRoutingTable localRoutingTable;
@@ -112,6 +122,7 @@ public class RoutingTableImpl extends BasicModule implements RoutingTable, Clust
         usersCache = CacheFactory.createCache(C2S_CACHE_NAME);
         anonymousUsersCache = CacheFactory.createCache(ANONYMOUS_C2S_CACHE_NAME);
         usersSessions = CacheFactory.createCache(C2S_SESSION_NAME);
+        localUsersSessions = CacheFactory.createCache(LOCAL_C2S_SESSION_NAME);
         localRoutingTable = new LocalRoutingTable();
     }
 
@@ -169,6 +180,7 @@ public class RoutingTableImpl extends BasicModule implements RoutingTable, Clust
                 try {
                     lock.lock();
                     usersSessions.put(route.toBareJID(), new ArrayList<>(Collections.singletonList(route.toString())));
+                    localUsersSessions.put(route.toBareJID(), new ArrayList<>(Collections.singletonList(route.toString())));
                 }
                 finally {
                     lock.unlock();
@@ -189,12 +201,17 @@ public class RoutingTableImpl extends BasicModule implements RoutingTable, Clust
                 Lock lock = CacheFactory.getLock(route.toBareJID(), usersSessions);
                 try {
                     lock.lock();
-                    ArrayList<String> jids = usersSessions.get(route.toBareJID());
+                    //ArrayList<String> jids = usersSessions.get(route.toBareJID());
+                    // get the local user session list
+                    ArrayList<String> jids = localUsersSessions.get(route.toBareJID());
                     if (jids == null) {
                         jids = new ArrayList<>();
                     }
-                    jids.add(route.toString());
+                    if (!jids.contains(route.toString()))
+                    	jids.add(route.toString());
+                    
                     usersSessions.put(route.toBareJID(), jids);
+                    localUsersSessions.put(route.toBareJID(), jids);
                 }
                 finally {
                     lock.unlock();
@@ -977,18 +994,30 @@ public class RoutingTableImpl extends BasicModule implements RoutingTable, Clust
             Lock lock = CacheFactory.getLock(route.toBareJID(), usersSessions);
             try {
                 lock.lock();
-                if (anonymous) {
-                    usersSessions.remove(route.toBareJID());
+                if (anonymous) 
+                {
+                	// clear out the local cache but put an empty list in the clustered cache
+                	usersSessions.put(route.toBareJID(), new ArrayList<>());
+                    localUsersSessions.remove(route.toBareJID());
                 }
                 else {
-                	ArrayList<String> jids = usersSessions.get(route.toBareJID());
-                    if (jids != null) {
+                	//ArrayList<String> jids = usersSessions.get(route.toBareJID());
+                    // get the local user session list
+                    ArrayList<String> jids = localUsersSessions.get(route.toBareJID());
+                    if (jids != null) 
+                    {
                         jids.remove(route.toString());
                         if (!jids.isEmpty()) {
                             usersSessions.put(route.toBareJID(), jids);
+                            localUsersSessions.put(route.toBareJID(), jids);
                         }
-                        else {
-                            usersSessions.remove(route.toBareJID());
+                        else 
+                        {
+                        	// in the clustered list
+                        	// just have an empty list
+                        	// but clear out the local user sessions
+                        	usersSessions.put(route.toBareJID(), jids);
+                            localUsersSessions.remove(route.toBareJID());
                         }
                     }
                 }
