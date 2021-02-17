@@ -246,10 +246,22 @@ public class RoutingTableImpl extends BasicModule implements RoutingTable, Clust
      *      session being shutdown).
      */
     @Override
-    public void routePacket(JID jid, Packet packet, boolean fromServer) throws PacketException {
+    public void routePacket(JID jid, Packet packet, boolean fromServer) throws PacketException 
+    {
+    	if (packet instanceof Message)
+    	{
+    		Log.info("[routePacket] received request to route packet to " + packet.getTo());
+    	}
+    	
     	PacketRouteStatus routed = PacketRouteStatus.ROUTE_FAILED;
         try {
-            if (DomainManager.getInstance().isRegisteredDomain(jid.getDomain())) {
+            if (DomainManager.getInstance().isRegisteredDomain(jid.getDomain())) 
+            {
+            	if (packet instanceof Message)
+            	{
+            		Log.info("[routePacket] packet recip is a local user.  routing to local domain ");
+            	}
+            	
                 // Packet sent to our domain.
                 routed = routeToLocalDomain(jid, packet, fromServer);
             }
@@ -321,19 +333,30 @@ public class RoutingTableImpl extends BasicModule implements RoutingTable, Clust
                 throw new PacketException("Cannot route packet of type IQ or Presence to bare JID: " + packet.toXML());
             }
         }
-        else {
+        else 
+        {
+        	
+        	if (packet instanceof Message)
+        	{
+        		Log.info("[routePacrouteToLocalDomain] packet recip {} has a full resource jid", jid); 
+        	}
+        	
             // Packet sent to local user (full JID)
             ClientRoute clientRoute = usersCache.get(jid.toString());
-            if (clientRoute == null) {
+            if (clientRoute == null) 
+            {
                 clientRoute = anonymousUsersCache.get(jid.toString());
             }
-            if (clientRoute != null) {
+            if (clientRoute != null) 
+            {
                 if (!clientRoute.isAvailable() && routeOnlyAvailable(packet, fromServer) &&
 		                !presenceUpdateHandler.hasDirectPresence(packet.getTo(), packet.getFrom())
                         && !PresenceUpdateHandler.isPresenceUpdateReflection( packet )) {
                     Log.debug("Unable to route packet. Packet should only be sent to available sessions and the route is not available. {} ", packet.toXML());
                     routed = PacketRouteStatus.ROUTE_FAILED;
-                } else {
+                } 
+                else 
+                {
                     if (localRoutingTable.isLocalRoute(jid)) {
                         if (packet instanceof Message) {
                             Message message = (Message) packet;
@@ -385,6 +408,14 @@ public class RoutingTableImpl extends BasicModule implements RoutingTable, Clust
                         }
                     }
                 }
+            }
+            else
+            {
+            	if (packet instanceof Message)
+            	{
+            		Log.info("[routePacrouteToLocalDomain] no client route found for {}. "
+            				+ " routing failed.  Go to store offine", jid); 
+            	}
             }
         }
         return routed;

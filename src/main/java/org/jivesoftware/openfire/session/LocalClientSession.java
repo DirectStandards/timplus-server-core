@@ -782,8 +782,10 @@ public class LocalClientSession extends LocalSession implements ClientSession {
             return false;
         }
         String username = getAddress().toBareJID();
-        for (ClientSession session : sessionManager.getSessions(username)) {
-            if (session.isOfflineFloodStopped()) {
+        for (ClientSession session : sessionManager.getSessions(username)) 
+        {
+            if (session != null && session.isOfflineFloodStopped()) 
+            {
                 return false;
             }
         }
