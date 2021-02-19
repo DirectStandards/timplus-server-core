@@ -237,6 +237,7 @@ public class ClusterManager {
                     // exit thread if/when clustering is disabled
                     while (ClusterManager.isClusteringEnabled()) 
                     {
+                    	
 	                	try
 	                	{	                		
 		                	// first check if we exist in the cluster
@@ -349,19 +350,19 @@ public class ClusterManager {
 		                		
 		                		fireMarkedAsSeniorClusterMember();
 		                	}
+		                	
+	                    	// sleep for the amount specified by the heart beat interval
+	                    	try
+	                    	{
+	                    		Thread.sleep(heartBeatInterval * 1000);
+	                    	}
+	                    	catch (Exception e)  {/* no-op */}
 		               
 	                	}
 	                	catch (ClusterException e)
 	                	{
 	                		Log.error("Failed to perform cluster heartbeat operation.", e);
 	                	}
-	                	
-	                	// sleep for the amount specified by the heart beat interval
-	                	try
-	                	{
-	                		Thread.sleep(heartBeatInterval * 1000);
-	                	}
-	                	catch (Exception e)  {/* no-op */}
                     }
                 }
             };

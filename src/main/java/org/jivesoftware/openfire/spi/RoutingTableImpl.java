@@ -168,6 +168,7 @@ public class RoutingTableImpl extends BasicModule implements RoutingTable, Clust
             Lock lockAn = CacheFactory.getLock(route.toString(), anonymousUsersCache);
             try {
                 lockAn.lock();
+                final String presense = destination.getPresence() == null ? "" : destination.getPresence().toXML();
                 added = anonymousUsersCache.put(route.toString(), new ClientRoute(server.getNodeID(), available)) ==
                         null;
             }
@@ -191,6 +192,7 @@ public class RoutingTableImpl extends BasicModule implements RoutingTable, Clust
             Lock lockU = CacheFactory.getLock(route.toString(), usersCache);
             try {
                 lockU.lock();
+                final String presense = destination.getPresence() == null ? "" : destination.getPresence().toXML();
                 added = usersCache.put(route.toString(), new ClientRoute(server.getNodeID(), available)) == null;
             }
             finally {
@@ -250,7 +252,7 @@ public class RoutingTableImpl extends BasicModule implements RoutingTable, Clust
     {
     	if (packet instanceof Message)
     	{
-    		Log.info("[routePacket] received request to route packet to " + packet.getTo());
+    		Log.debug("[routePacket] received request to route packet to " + packet.getTo());
     	}
     	
     	PacketRouteStatus routed = PacketRouteStatus.ROUTE_FAILED;
@@ -259,7 +261,7 @@ public class RoutingTableImpl extends BasicModule implements RoutingTable, Clust
             {
             	if (packet instanceof Message)
             	{
-            		Log.info("[routePacket] packet recip is a local user.  routing to local domain ");
+            		Log.debug("[routePacket] packet recip is a local user.  routing to local domain ");
             	}
             	
                 // Packet sent to our domain.
@@ -338,7 +340,7 @@ public class RoutingTableImpl extends BasicModule implements RoutingTable, Clust
         	
         	if (packet instanceof Message)
         	{
-        		Log.info("[routePacrouteToLocalDomain] packet recip {} has a full resource jid", jid); 
+        		Log.debug("[routePacrouteToLocalDomain] packet recip {} has a full resource jid", jid); 
         	}
         	
             // Packet sent to local user (full JID)
@@ -413,7 +415,7 @@ public class RoutingTableImpl extends BasicModule implements RoutingTable, Clust
             {
             	if (packet instanceof Message)
             	{
-            		Log.info("[routePacrouteToLocalDomain] no client route found for {}. "
+            		Log.debug("[routePacrouteToLocalDomain] no client route found for {}. "
             				+ " routing failed.  Go to store offine", jid); 
             	}
             }
@@ -597,7 +599,7 @@ public class RoutingTableImpl extends BasicModule implements RoutingTable, Clust
         // Get existing AVAILABLE sessions of this user or AVAILABLE to the sender of the packet
         Collection<JID> addresses =  getRoutes(recipientJID, packet.getFrom());
         
-        Log.info("[routeToBare] - JIDRouting message to bare jid " + recipientJID);
+        Log.debug("[routeToBare] - JIDRouting message to bare jid " + recipientJID);
         
         for (JID address : addresses) {
             ClientSession session = getClientRoute(address);
@@ -614,12 +616,12 @@ public class RoutingTableImpl extends BasicModule implements RoutingTable, Clust
          *  be stored offline on that node.
          */
         
-        Log.info("[routeToBare] - found client routes: " + addresses.size());
-        Log.info("[routeToBare] - found client sessions: " + sessions.size());
-        Log.info("[routeToBare] - remotePacketRouter instance: " + remotePacketRouter);
+        Log.debug("[routeToBare] - found client routes: " + addresses.size());
+        Log.debug("[routeToBare] - found client sessions: " + sessions.size());
+        Log.debug("[routeToBare] - remotePacketRouter instance: " + remotePacketRouter);
         if (sessions.size() == 0 && addresses.size() > 0 && remotePacketRouter != null)
         {
-        	Log.info("[routeToBare] - No local client sessions but found client routes.  Checking for remote client route");
+        	Log.debug("[routeToBare] - No local client sessions but found client routes.  Checking for remote client route");
         	
         	for (JID address : addresses)
         	{
@@ -627,7 +629,7 @@ public class RoutingTableImpl extends BasicModule implements RoutingTable, Clust
         		if (clientRoute != null && !localRoutingTable.isLocalRoute(address))
         		{
         			
-        			Log.info("[routeToBare] - Found remote route.  Sending message to remote packet router.");
+        			Log.debug("[routeToBare] - Found remote route.  Sending message to remote packet router.");
         			// looks like a good candidate to send to... we know the 
         			// cluster node id and the full JID... update the packet with the full Jid and send
         			// the message onto a server in the cluster

@@ -17,14 +17,18 @@
 package org.jivesoftware.openfire.session;
 
 import org.dom4j.Element;
+import org.dom4j.io.XMPPPacketReader;
 import org.dom4j.tree.DefaultElement;
+import org.jivesoftware.openfire.net.MXParser;
 import org.jivesoftware.util.cache.ExternalizableUtil;
+import org.xmlpull.v1.XmlPullParserFactory;
 import org.xmpp.packet.Presence;
 
 import java.io.Externalizable;
 import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
+import java.io.StringReader;
 
 /**
  * Client session information to be used when running in a cluster. The session
@@ -81,7 +85,7 @@ public class ClientSessionInfo implements Externalizable {
 
     @Override
     public void writeExternal(ObjectOutput out) throws IOException {
-        ExternalizableUtil.getInstance().writeSerializable(out, (DefaultElement) presence.getElement());
+        ExternalizableUtil.getInstance().writeSafeUTF(out, presence.toXML());
         ExternalizableUtil.getInstance().writeBoolean(out, defaultList != null);
         if (defaultList != null) {
             ExternalizableUtil.getInstance().writeSafeUTF(out, defaultList);
@@ -97,8 +101,23 @@ public class ClientSessionInfo implements Externalizable {
 
     @Override
     public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
-        Element packetElement = (Element) ExternalizableUtil.getInstance().readSerializable(in);
-        presence = new Presence(packetElement, true);
+    	final String xml = ExternalizableUtil.getInstance().readSafeUTF(in);
+    	
+    	try
+    	{
+			XmlPullParserFactory factory = XmlPullParserFactory.newInstance(MXParser.class.getName(), null);
+	        factory.setNamespaceAware(true);
+	        final XMPPPacketReader parser = new XMPPPacketReader();
+	        parser.setXPPFactory( factory );
+			
+			final Element packetElement = parser.read(new StringReader(xml)).getRootElement();  
+	        presence = new Presence(packetElement, true);
+    	}
+    	catch (Exception e)
+    	{
+    		throw new IllegalStateException("Can't deserilaize ClientSessionInfo object.", e);
+    	}
+
         if (ExternalizableUtil.getInstance().readBoolean(in)) {
             defaultList = ExternalizableUtil.getInstance().readSafeUTF(in);
         }

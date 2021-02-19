@@ -162,6 +162,6 @@ public class CacheWrapper<K extends Serializable, V extends Serializable> implem
     @Override
     public void purgeClusteredNodeCaches(NodeID node)
     {
-    	
+    	cache.purgeClusteredNodeCaches(node);
     }
 }

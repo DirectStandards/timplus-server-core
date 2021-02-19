@@ -22,6 +22,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Types;
 import java.util.*;
+import java.util.Map.Entry;
 import java.util.concurrent.locks.Lock;
 
 import org.dom4j.Document;
@@ -30,6 +31,7 @@ import org.dom4j.DocumentHelper;
 import org.jivesoftware.database.DbConnectionManager;
 import org.jivesoftware.openfire.*;
 import org.jivesoftware.openfire.auth.UnauthorizedException;
+import org.jivesoftware.openfire.cluster.ClusterManager;
 import org.jivesoftware.openfire.component.InternalComponentManager;
 import org.jivesoftware.openfire.container.BasicModule;
 import org.jivesoftware.openfire.event.UserEventDispatcher;
@@ -41,6 +43,7 @@ import org.jivesoftware.openfire.roster.Roster;
 import org.jivesoftware.openfire.roster.RosterItem;
 import org.jivesoftware.openfire.roster.RosterManager;
 import org.jivesoftware.openfire.session.ClientSession;
+import org.jivesoftware.openfire.session.ClientSessionInfo;
 import org.jivesoftware.openfire.user.User;
 import org.jivesoftware.openfire.user.UserManager;
 import org.jivesoftware.openfire.user.UserNotFoundException;
@@ -306,6 +309,9 @@ public class PresenceManagerImpl extends BasicModule implements PresenceManager,
     public void handleProbe(Presence packet) throws UnauthorizedException {
         String username = packet.getTo().toBareJID();
         String domain = packet.getTo().getDomain();
+        
+        Log.debug("[handleProbe] Received presense probe from {} to {}",  packet.getFrom().toString(), packet.getTo().toString());
+        
         try {
             Roster roster = rosterManager.getRoster(username, domain);
             RosterItem item = roster.getRosterItem(packet.getFrom());
@@ -350,7 +356,11 @@ public class PresenceManagerImpl extends BasicModule implements PresenceManager,
     @Override
     public void probePresence(JID prober, JID probee) {
         try {
-            if (server.isLocal(probee)) {
+                	
+            if (server.isLocal(probee)) 
+            {
+            	Log.debug("[probePresence] collecting all online resources for probee " + probee.toString());
+            	
                 // Local probers should receive presences of probee in all connected resources
                 Collection<JID> proberFullJIDs = new ArrayList<>();
                 if (prober.getResource() == null && server.isLocal(prober)) {
@@ -364,7 +374,13 @@ public class PresenceManagerImpl extends BasicModule implements PresenceManager,
                 // If the probee is a local user then don't send a probe to the contact's server.
                 // But instead just send the contact's presence to the prober
                 Collection<ClientSession> sessions = sessionManager.getSessions(probee.toBareJID());
-                if (sessions.isEmpty()) {
+                
+                Log.debug("[probePresence] found {} online sessions for probee {}", sessions.size(),  probee.toString());
+                
+                if (sessions.isEmpty()) 
+                {
+                	Log.debug("[probePresence] no online sessions for probee {}.  Looking for offline information", probee.toString());
+                	
                     // If the probee is not online then try to retrieve his last unavailable
                     // presence which may contain particular information and send it to the
                     // prober
@@ -401,13 +417,39 @@ public class PresenceManagerImpl extends BasicModule implements PresenceManager,
                 else {
                     // The contact is online so send to the prober all the resources where the
                     // probee is connected
-                    for (ClientSession session : sessions) {
+                	
+                	Log.debug("[probePresence] looping through online sessions for probee {}", probee.toString());
+
+                	final Map<JID, Presence> resourcePres = new HashMap<>();
+                	// if clustered, then get the presense information from the session info cache
+                	if (ClusterManager.isClusteringStarted())
+                	{
+                		// get the sessions
+                		final List<JID> routeJIDs = XMPPServer.getInstance().getRoutingTable().getRoutes(probee.asBareJID(), (JID)null);
+                		for (JID routeJID : routeJIDs)
+                		{
+                            final ClientSessionInfo sessionInfo = SessionManager.getInstance().getSessionInfoCache().get(routeJID.toString());
+                            if (sessionInfo != null)
+                            	resourcePres.put(routeJID, sessionInfo.getPresence());
+                		}
+                	}
+                	else
+                	{
+                        for (ClientSession session : sessions)
+                        	resourcePres.put(session.getAddress(), session.getPresence());
+                	}
+                	
+                	Log.debug("[probePresence] sending {} presense packets for probee {}", resourcePres.size(), probee.toString());
+                	
+                    for (Entry<JID,Presence> entry : resourcePres.entrySet()) 
+                    {
                         // Create presence to send from probee to prober
-                        Presence presencePacket = session.getPresence().createCopy();
-                        presencePacket.setFrom(session.getAddress());
+
+                    	Presence presencePacket = entry.getValue();
+                        presencePacket.setFrom(entry.getKey());
                         // Check if a privacy list of the probee blocks the outgoing presence
-                        PrivacyList list = session.getActiveList();
-                        list = list == null ? session.getDefaultList() : list;
+                        PrivacyList list = PrivacyListManager.getInstance().getPrivacyList(entry.getKey().asBareJID().toString(), entry.getKey().getDomain(), "");
+
                         // Send presence to all prober's resources
                         for (JID receipient : proberFullJIDs) {
                             presencePacket.setTo(receipient);
@@ -417,7 +459,9 @@ public class PresenceManagerImpl extends BasicModule implements PresenceManager,
                                     continue;
                                 }
                             }
-                            try {
+                            try 
+                            {
+                            	Log.debug("[probePresence] attempting to send presence for probee full jid {} with type {}", entry.getKey(), presencePacket.getType());
                                 deliverer.deliver(presencePacket);
                             }
                             catch (Exception e) {

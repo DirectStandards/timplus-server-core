@@ -18,6 +18,7 @@ package org.jivesoftware.util.cache;
 
 import org.jivesoftware.util.cache.Cacheable;
 
+import java.io.Externalizable;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.io.OutputStream;
@@ -204,6 +205,22 @@ public class CacheSizes {
         else if (object instanceof byte[]) {
             byte [] array = (byte[])object;
             return sizeOfObject() + array.length;
+        }
+        else if (object instanceof Externalizable)
+        {
+        	int size = 1;
+        	try
+        	{
+	            CacheSizes.NullOutputStream out = new NullOutputStream();
+	            ObjectOutputStream outObj = new ObjectOutputStream(out);
+	            ((Externalizable) object).writeExternal(outObj);
+	            outObj.flush();
+	            size = out.size();
+        	}
+            catch (Exception ioe) {
+                throw new CannotCalculateSizeException(object);
+            }
+            return size;      	
         }
         // Default behavior -- serialize the object to determine its size.
         else {
