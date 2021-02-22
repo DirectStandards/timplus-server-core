@@ -15,7 +15,7 @@
     <properties>
         <warSourceDirectory>${basedir}/src/main/webapp</warSourceDirectory>
         <jetty.version>9.4.29.v20200521</jetty.version>
-        <spring-boot.version>2.4.2</spring-boot.version>        
+        <spring-boot.version>2.4.3</spring-boot.version>        
     </properties>
 
     <build>
