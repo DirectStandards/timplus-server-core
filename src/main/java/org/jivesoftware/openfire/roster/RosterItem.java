@@ -620,7 +620,7 @@ public class RosterItem implements Cacheable, Externalizable {
 
     @Override
     public void writeExternal(ObjectOutput out) throws IOException {
-        ExternalizableUtil.getInstance().writeSerializable(out, jid);
+        ExternalizableUtil.getInstance().writeSafeUTF(out, jid.toString());
         ExternalizableUtil.getInstance().writeBoolean(out, nickname != null);
         if (nickname != null) {
             ExternalizableUtil.getInstance().writeSafeUTF(out, nickname);
@@ -636,7 +636,8 @@ public class RosterItem implements Cacheable, Externalizable {
 
     @Override
     public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
-        jid = (JID) ExternalizableUtil.getInstance().readSerializable(in);
+        
+    	jid = new JID(ExternalizableUtil.getInstance().readSafeUTF(in), true);
         if (ExternalizableUtil.getInstance().readBoolean(in)) {
             nickname = ExternalizableUtil.getInstance().readSafeUTF(in);
         }

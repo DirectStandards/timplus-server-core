@@ -6,12 +6,17 @@ import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.Externalizable;
 import java.io.IOException;
+import java.io.ObjectInput;
 import java.io.ObjectInputStream;
+import java.io.ObjectOutput;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.util.Collection;
+import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 
 import org.apache.commons.codec.binary.StringUtils;
@@ -46,15 +51,25 @@ public class DefaultExternalizableUtilStrategy implements ExternalizableUtilStra
 	}
 
 	@Override
-	public void writeStringList(DataOutput out, List<String> stringList) throws IOException {
-		// TODO Auto-generated method stub
+	public void writeStringList(DataOutput out, List<String> stringList) throws IOException 
+	{
+		out.writeInt(stringList.size());
+		for (String str : stringList)
+			this.writeSafeUTF(out, str);
 		
 	}
 
 	@Override
-	public List<String> readStringList(DataInput in) throws IOException {
-		// TODO Auto-generated method stub
-		return null;
+	public List<String> readStringList(DataInput in) throws IOException 
+	{
+		final List<String> list = new LinkedList<>();
+		
+		int retVal = in.readInt();
+		
+		for (int i = 0; i < retVal; ++i)
+			list.add(this.readSafeUTF(in));
+		
+		return list;
 	}
 
 	@Override
@@ -70,15 +85,16 @@ public class DefaultExternalizableUtilStrategy implements ExternalizableUtilStra
 	}
 
 	@Override
-	public void writeLong(DataOutput out, long value) throws IOException {
-		// TODO Auto-generated method stub
+	public void writeLong(DataOutput out, long value) throws IOException 
+	{
+		out.writeLong(value);
 		
 	}
 
 	@Override
-	public long readLong(DataInput in) throws IOException {
-		// TODO Auto-generated method stub
-		return 0;
+	public long readLong(DataInput in) throws IOException 
+	{
+		return in.readLong();
 	}
 
 	@Override
@@ -115,23 +131,30 @@ public class DefaultExternalizableUtilStrategy implements ExternalizableUtilStra
 	@Override
 	public void writeSerializable(DataOutput out, Serializable value) throws IOException 
 	{
-		/*
+		
 		final ByteArrayOutputStream outStream = new ByteArrayOutputStream();
 		final ObjectOutputStream objOutStream = new ObjectOutputStream(outStream);
 		
-		objOutStream.writeObject(objOutStream);
+		try
+		{
+			objOutStream.writeObject(objOutStream);
 		
-		final byte[] bytes = outStream.toByteArray();
+			final byte[] bytes = outStream.toByteArray();
 	
-		out.writeInt(bytes.length);
-		out.write(bytes);
-		*/
+			out.writeInt(bytes.length);
+			out.write(bytes);
+		}
+		catch (Exception e)
+		{
+			/* no - op for now */
+			//throw new IllegalStateException("Cannot serialize object.", e);
+		}
 	}
 
 	@Override
 	public Serializable readSerializable(DataInput in) throws IOException 
 	{
-		/*
+		
 		final int length = in.readInt();
 		final byte[] bytes = new byte[length];
 		
@@ -148,8 +171,6 @@ public class DefaultExternalizableUtilStrategy implements ExternalizableUtilStra
 		{
 			throw new IllegalArgumentException("Failed to deserialized object.", e);
 		}
-		*/
-		return null;
 	}
 
 	@Override
@@ -202,16 +223,46 @@ public class DefaultExternalizableUtilStrategy implements ExternalizableUtilStra
 	}
 
 	@Override
-	public void writeExternalizableMap(DataOutput out, Map<String, ? extends Externalizable> map) throws IOException {
-		// TODO Auto-generated method stub
+	public void writeExternalizableMap(DataOutput out, Map<String, ? extends Externalizable> map) throws IOException 
+	{
+		out.writeInt(map.size());
+		for (Entry<String, ? extends Externalizable> entry : map.entrySet())
+		{
+			this.writeSafeUTF(out, entry.getKey());
+			this.writeSafeUTF(out, entry.getValue().getClass().getName());
+			entry.getValue().writeExternal((ObjectOutput)out);
+		}
 		
 	}
 
+	@SuppressWarnings({ "unchecked", "rawtypes" })
 	@Override
 	public int readExternalizableMap(DataInput in, Map<String, ? extends Externalizable> map, ClassLoader loader)
-			throws IOException {
-		// TODO Auto-generated method stub
-		return 0;
+			throws IOException 
+	{
+		final Map theMap = map;
+		
+		int retVal = in.readInt();
+		for (int i = 0; i < retVal; ++i)
+		{
+			try
+			{
+				final String key = this.readSafeUTF(in);
+				final String valueClassName = this.readSafeUTF(in);
+				Class<Externalizable> valueClass = (Class<Externalizable>)this.getClass().getClassLoader().loadClass(valueClassName);
+				final Externalizable value = valueClass.newInstance();
+	
+				value.readExternal((ObjectInput)in);
+				
+				theMap.put(key, value);
+			}
+			catch (Exception e)
+			{
+				throw new IllegalStateException("Failed to read externalizable object.");
+			}
+		}
+		
+		return retVal;
 	}
 
 	@Override
@@ -229,39 +280,73 @@ public class DefaultExternalizableUtilStrategy implements ExternalizableUtilStra
 	}
 
 	@Override
-	public void writeStringsMap(DataOutput out, Map<String, Set<String>> map) throws IOException {
-		// TODO Auto-generated method stub
+	public void writeStringsMap(DataOutput out, Map<String, Set<String>> map) throws IOException 
+	{
+		out.writeInt(map.size());
+		for (Entry<String, Set<String>> entry : map.entrySet())
+		{
+			this.writeSafeUTF(out, entry.getKey());
+			out.writeInt(entry.getValue().size());
+			for (String str : entry.getValue())
+			{
+				this.writeSafeUTF(out, str);
+			}
+		}
 		
 	}
 
 	@Override
-	public int readStringsMap(DataInput in, Map<String, Set<String>> map) throws IOException {
-		// TODO Auto-generated method stub
-		return 0;
+	public int readStringsMap(DataInput in, Map<String, Set<String>> map) throws IOException 
+	{
+		int retVal = in.readInt();
+		for (int i = 0; i < retVal; ++i)
+		{
+			final String key = this.readSafeUTF(in);
+			final int setLen = this.readInt(in);
+			final Set<String> entry = new HashSet<>();
+			
+			for (int j = 0; j < setLen; ++j)
+			{
+				entry.add(this.readSafeUTF(in));
+			}
+			
+			map.put(key,  entry);
+		}
+		
+		return retVal;
 	}
 
 	@Override
-	public void writeStrings(DataOutput out, Collection<String> collection) throws IOException {
-		// TODO Auto-generated method stub
+	public void writeStrings(DataOutput out, Collection<String> collection) throws IOException 
+	{
+		out.writeInt(collection.size());
+		for (String str : collection)
+			this.writeSafeUTF(out, str);
 		
 	}
 
 	@Override
-	public int readStrings(DataInput in, Collection<String> collection) throws IOException {
-		// TODO Auto-generated method stub
-		return 0;
+	public int readStrings(DataInput in, Collection<String> collection) throws IOException 
+	{
+		int retVal = in.readInt();
+		
+		for (int i = 0; i < retVal; ++i)
+			collection.add(this.readSafeUTF(in));
+		
+		return retVal;
 	}
 
 	@Override
-	public void writeInt(DataOutput out, int value) throws IOException {
-		// TODO Auto-generated method stub
+	public void writeInt(DataOutput out, int value) throws IOException 
+	{
+		out.writeInt(value);
 		
 	}
 
 	@Override
-	public int readInt(DataInput in) throws IOException {
-		// TODO Auto-generated method stub
-		return 0;
+	public int readInt(DataInput in) throws IOException 
+	{
+		return in.readInt();
 	}
 
 }

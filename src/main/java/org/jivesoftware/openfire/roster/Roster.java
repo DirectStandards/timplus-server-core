@@ -81,6 +81,38 @@ public class Roster implements Cacheable, Externalizable {
     public Roster() {
     }
 
+    /*
+     * For test purposes
+     */
+    public void setUsername(String username)
+    {
+    	this.username = username;
+    }
+    
+    /*
+     * For test purposes
+     */
+    public void setDomain(String domain)
+    {
+    	this.domain = domain;
+    }
+    
+    /*
+     * For test purposes
+     */
+    public void setRosterItems(ConcurrentMap<String, RosterItem> rosterItems)
+    {
+    	this.rosterItems = rosterItems;
+    }
+    
+    /*
+     * For test purposes
+     */
+    public void setImplicitFrom(ConcurrentMap<String, Set<String>> implicitFrom)
+    {
+    	this.implicitFrom = implicitFrom;
+    }
+    
     /**
      * Create a roster for the given user, pulling the existing roster items
      * out of the backend storage provider. The roster will also include items that
@@ -1177,6 +1209,7 @@ public class Roster implements Cacheable, Externalizable {
     @Override
     public void writeExternal(ObjectOutput out) throws IOException {
         ExternalizableUtil.getInstance().writeSafeUTF(out, username);
+        ExternalizableUtil.getInstance().writeSafeUTF(out, domain);        
         ExternalizableUtil.getInstance().writeExternalizableMap(out, rosterItems);
         ExternalizableUtil.getInstance().writeStringsMap(out, implicitFrom);
     }
@@ -1184,6 +1217,7 @@ public class Roster implements Cacheable, Externalizable {
     @Override
     public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
         username = ExternalizableUtil.getInstance().readSafeUTF(in);
+        domain = ExternalizableUtil.getInstance().readSafeUTF(in);
         ExternalizableUtil.getInstance().readExternalizableMap(in, rosterItems, getClass().getClassLoader());
         ExternalizableUtil.getInstance().readStringsMap(in, implicitFrom);
     }
