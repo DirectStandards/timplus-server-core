@@ -44,8 +44,13 @@ import org.eclipse.jetty.util.ssl.SSLObjectFactory;
 import org.eclipse.jetty.util.ssl.SslContextFactory;
 import org.jivesoftware.openfire.XMPPServer;
 import org.jivesoftware.openfire.auth.UnauthorizedException;
+import org.jivesoftware.openfire.cluster.ClusterException;
+import org.jivesoftware.openfire.cluster.ClusterManager;
+import org.jivesoftware.openfire.cluster.ClusterNode;
 import org.jivesoftware.openfire.filetransfer.FileTransferManager;
 import org.jivesoftware.openfire.filetransfer.FileTransferRejectedException;
+import org.jivesoftware.openfire.filetransfer.proxy.credentials.ProxyCredentialException;
+import org.jivesoftware.openfire.filetransfer.proxy.credentials.ProxyServerCredential;
 import org.jivesoftware.openfire.filetransfer.proxy.credentials.ProxyServerCredentialManager;
 import org.jivesoftware.openfire.spi.ConnectionConfiguration;
 import org.jivesoftware.openfire.spi.ConnectionManagerImpl;
@@ -73,12 +78,18 @@ import org.xmpp.packet.JID;
  */
 public class ProxyConnectionManager {
 
+	public static final String FILE_TRANSFER_CACHE_NAME = "File Transfer";
+
+	public static final String CLUSTER_CROSS_PROXY_MAP_CACHE_NAME = "Cluster Cross Proxy Map";
+	
     private static final Logger Log = LoggerFactory.getLogger(ProxyConnectionManager.class);
 
     private static final String proxyTransferRate = "proxyTransferRate";
 
     private Cache<String, ProxyTransfer> connectionMap;
 
+    private Cache<String, ClusterCrossProxyInfo> clusterCrossProxyMap;
+    
     private final Object connectionLock = new Object();
 
     private ExecutorService executor = Executors.newCachedThreadPool();
@@ -94,9 +105,11 @@ public class ProxyConnectionManager {
     private String className;
 
     public ProxyConnectionManager(FileTransferManager manager) {
-        String cacheName = "File Transfer";
-        connectionMap = CacheFactory.createCache(cacheName);
+        
+        connectionMap = CacheFactory.createCache(FILE_TRANSFER_CACHE_NAME);
 
+        clusterCrossProxyMap = CacheFactory.createCache(CLUSTER_CROSS_PROXY_MAP_CACHE_NAME);
+        
         className = JiveGlobals.getProperty("provider.transfer.proxy",
                 "org.jivesoftware.openfire.filetransfer.proxy.DefaultProxyTransfer");
 
@@ -291,28 +304,126 @@ public class ProxyConnectionManager {
         out.write(authResult);
         
         String responseDigest = processIncomingSocks5Message(in);
-        try {
-            synchronized (connectionLock) {
-                ProxyTransfer transfer = connectionMap.get(responseDigest);
-                if (transfer == null) {
-                    transfer = createProxyTransfer(responseDigest, connection);
-                    transferManager.registerProxyTransfer(responseDigest, transfer);
-                    connectionMap.put(responseDigest, transfer);
-                }
-                else {
-                    transfer.setInputStream(connection.getInputStream());
-                }
-            }
+        
+        try
+        {
+        	setupAndUpateProxyTranfer(responseDigest, connection);
             cmd = createOutgoingSocks5Message(0, responseDigest);
             out.write(cmd);
         }
-        catch (UnauthorizedException eu) {
+        catch (UnauthorizedException eu) 
+        {
             cmd = createOutgoingSocks5Message(2, responseDigest);
             out.write(cmd);
             throw new IOException("Illegal proxy transfer");
         }
+
     }
 
+    
+    private void setupAndUpateProxyTranfer(String responseDigest, Socket connection) throws IOException, UnauthorizedException
+    {
+    	ClusterCrossProxyInfo crossProxyInfo = null;
+    	
+
+        synchronized (connectionLock) 
+        {
+        	// check if a clustered connection (i.e. the receiver's connection) has already been established by another 
+        	// node in the cluster
+            if (ClusterManager.isClusteringStarted())
+            {
+            	crossProxyInfo = clusterCrossProxyMap.get(responseDigest);
+            }
+        	
+            ProxyTransfer transfer = connectionMap.get(responseDigest);
+            if (transfer != null)
+            {
+        		/*
+            	 *  This connection is coming from the sender.  It might be the actual sender's edge client
+            	 *  or it might be from another proxy server that the sender's edge client is connected to.
+            	 *  Either way, we know that this node has been connected to by the receiver and the output
+            	 *  stream to the receiver has already been captured.
+            	 */
+         		transfer.setInputStream(connection.getInputStream());
+         		transfer.setSessionID(responseDigest);
+         		
+            	if (crossProxyInfo != null)
+            	{
+            		/*
+            		 * This is a clustered connection.  In clustered proxy mode, we will auto activate the 
+            		 * the proxy because we can't gaurantee that we will receive the ACTIVATE message.
+            		 */
+            		doTransfer(responseDigest, transfer);
+            	}
+            	
+            }
+            else if (transfer == null && crossProxyInfo == null) 
+            {
+            	/*
+            	 * This connection is coming from the receiver. Bby TIM+ spec, the receiver establishes
+            	 * a connection to the proxy server first.
+            	 */
+                
+            	transfer = createProxyTransfer(responseDigest, connection);
+                if (ClusterManager.isClusteringStarted())
+                {
+                	try
+                	{
+                		crossProxyInfo = createClusterCrossProxyInfo(responseDigest);
+                		clusterCrossProxyMap.put(responseDigest, crossProxyInfo);
+                	}
+                	catch (Exception e)
+                	{
+                		Log.error("Failed to get cross proxy info information.  File transfer digest {} may fail.", responseDigest, e);
+                	}
+                }
+                transferManager.registerProxyTransfer(responseDigest, transfer);
+ 
+                connectionMap.put(responseDigest, transfer);
+            }
+            else 
+            {
+            	/*
+            	 * This connection is coming from the sender's edge client, but the receiver is connection
+            	 * to another node.
+            	 * This condition should only happen when in a clustered mode, so we 
+            	 * should have a crossProxyInfo structure available.
+            	 */
+
+            	
+            	/*
+            	 *  We need to connect to the peer proxy clustered node using information in the 
+            	 *  crossProxyInfo structure.
+            	 */
+            	final AuthSocks5Client socks5Client = new AuthSocks5Client(crossProxyInfo.getReceiversClusterNode().getNodeIP(), 
+            			crossProxyInfo.getPort(), responseDigest);
+            	
+            	try
+            	{
+            		final Socket proxySocket = socks5Client.getSocket(10000, crossProxyInfo.getProxyServiceCredential().getSubject(), 
+            			crossProxyInfo.getProxyServiceCredential().getSecret());
+            	
+            		transfer = createProxyTransfer(responseDigest, proxySocket);
+            		transferManager.registerProxyTransfer(responseDigest, transfer);
+            		
+            		transfer.setInputStream(connection.getInputStream());
+                    transfer.setSessionID(responseDigest);
+            		
+            		connectionMap.put(responseDigest, transfer);
+            		
+            		// This is a clustered config, so auto ACTIVATE that transfer
+            		doTransfer(responseDigest, transfer);
+            	}
+            	catch (Exception e)
+            	{
+            		throw new IOException("Failed to establish SOCKS5 proxy to proxy connection.", e);
+            	}
+            	
+            }
+        }
+
+    }
+    
     private ProxyTransfer createProxyTransfer(String transferDigest, Socket targetSocket)
             throws IOException {
         ProxyTransfer provider;
@@ -394,41 +505,64 @@ public class ProxyConnectionManager {
         synchronized (connectionLock) {
             temp = connectionMap.get(digest);
         }
-        final ProxyTransfer transfer = temp;
-        // check to make sure we have all the required
-        // information to start the transfer
-        if (transfer == null || !transfer.isActivatable()) {
-            throw new IllegalArgumentException("Transfer doesn't exist or is missing parameters");
+        if (temp != null)
+        {
+	        final ProxyTransfer transfer = temp;
+	        // check to make sure we have all the required
+	        // information to start the transfer
+	        if (transfer == null || !transfer.isActivatable()) {
+	            throw new IllegalArgumentException("Transfer doesn't exist or is missing parameters");
+	        }
+	
+	        transfer.setInitiator(initiator.toString());
+	        transfer.setTarget(target.toString());
+	        transfer.setSessionID(sid);
+	        
+	        // In clustered mode, the activation has already been started
+	        if (!ClusterManager.isClusteringStarted())
+	        	doTransfer(digest, transfer);
         }
-
-        transfer.setInitiator(initiator.toString());
-        transfer.setTarget(target.toString());
-        transfer.setSessionID(sid);
-        transfer.setTransferFuture(executor.submit(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    transferManager.fireFileTransferStart( transfer.getSessionID(), true );
-                }
-                catch (FileTransferRejectedException e) {
-                    notifyFailure(transfer, e);
-                    return;
-                }
-                try {
-                    transfer.doTransfer();
-                    transferManager.fireFileTransferCompleted( transfer.getSessionID(), true );
-                }
-                catch (IOException e) {
-                    Log.error("Error during file transfer", e);
-                    transferManager.fireFileTransferCompleted( transfer.getSessionID(), false );
-                }
-                finally {
-                    connectionMap.remove(digest);
-                }
-            }
-        }));
+        
     }
 
+    private void doTransfer(String digest, ProxyTransfer transfer)
+    {
+        transfer.setTransferFuture(executor.submit(new Runnable() {
+            @Override
+            public void run() 
+            {
+                try
+                {
+	            	Log.info("Strarting file transfer transfer.");
+	            	
+	            	try {
+	                    transferManager.fireFileTransferStart( transfer.getSessionID(), true );
+	                }
+	                catch (FileTransferRejectedException e) {
+	                    notifyFailure(transfer, e);
+	                    return;
+	                }
+	                try {
+	                    transfer.doTransfer();
+	                    transferManager.fireFileTransferCompleted( transfer.getSessionID(), true );
+	                }
+	                catch (IOException e) {
+	                    Log.error("Error during file transfer", e);
+	                    transferManager.fireFileTransferCompleted( transfer.getSessionID(), false );
+	                }
+	                finally {
+	                    connectionMap.remove(digest);
+	                    clusterCrossProxyMap.remove(digest);
+	                }
+                }
+                catch (Exception e)
+                {
+                	Log.error("Error during file transfer", e);
+                }
+            }
+        }));    	
+    }
+    
     private void notifyFailure(ProxyTransfer transfer, FileTransferRejectedException e) {
 
     }
@@ -524,4 +658,21 @@ public class ProxyConnectionManager {
         }
     }
 
+    protected ClusterCrossProxyInfo createClusterCrossProxyInfo(String responseDigest) throws ClusterException, ProxyCredentialException
+    {
+    	final ClusterCrossProxyInfo retVal = new ClusterCrossProxyInfo();
+    	
+    	final ClusterNode clusterNode = 
+    			ClusterManager.getClusterNodeProvider().getClusterMember(XMPPServer.getInstance().getNodeID());
+    	
+    	retVal.setReceiversClusterNode(clusterNode);
+    	retVal.setPort(proxyPort);
+    	retVal.setResponseDigest(responseDigest);
+    	
+    	final ProxyServerCredential cred = ProxyServerCredentialManager.getInstance().createCredential();
+    	
+    	retVal.setProxyServiceCredential(cred);
+    	
+    	return retVal;
+    }
 }
