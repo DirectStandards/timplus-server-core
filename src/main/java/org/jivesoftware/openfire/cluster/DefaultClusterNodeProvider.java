@@ -10,10 +10,16 @@ import java.util.Collection;
 import java.util.List;
 
 import org.jivesoftware.database.DbConnectionManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class DefaultClusterNodeProvider implements ClusterNodeProvider
 {
+	private static final Logger Log = LoggerFactory.getLogger(DefaultClusterNodeProvider.class);
+	
 	private static final String LOAD_CLUSTER_MEMBERS = "SELECT * FROM ofClusterMember WHERE nodeStatus=0 or nodeStatus=1";
+
+	private static final String LOAD_NON_CLUSTER_MEMBERS = "SELECT * FROM ofClusterMember WHERE nodeStatus=2 or nodeStatus=3";
 	
 	private static final String LOAD_CLUSTER_MEMBER_BY_NODE = "SELECT * FROM ofClusterMember WHERE nodeId = ?";	
 	
@@ -26,8 +32,20 @@ public class DefaultClusterNodeProvider implements ClusterNodeProvider
     
     private static final String HEARTBEAT_CLUSTER_MEMBER = "UPDATE ofClusterMember SET lastNodeHBDtTm=? WHERE nodeId=?";   
     
+    private static final String DELETE_CLUSTER_MEMBER = "DELETE FROM ofClusterMember WHERE nodeId = ?";
+    
 	@Override
 	public Collection<ClusterNode> getClusterMembers() throws ClusterException 
+	{
+		return getCluster(LOAD_CLUSTER_MEMBERS);
+	}
+
+	public Collection<ClusterNode> getNonClusterMembers() throws ClusterException
+	{
+		return getCluster(LOAD_NON_CLUSTER_MEMBERS);
+	}
+	
+	protected Collection<ClusterNode> getCluster(String query) throws ClusterException 
 	{
 		   final List<ClusterNode> nodes = new ArrayList<>();
 		   Connection con = null;
@@ -37,7 +55,7 @@ public class DefaultClusterNodeProvider implements ClusterNodeProvider
 		   {
 			   con = DbConnectionManager.getConnection();
 
-	           pstmt = con.prepareStatement(LOAD_CLUSTER_MEMBERS);
+	           pstmt = con.prepareStatement(query);
 	            // Set the fetch size. This will prevent some JDBC drivers from trying
 	            // to load the entire result set into memory.
 	            DbConnectionManager.setFetchSize(pstmt, 500);
@@ -60,7 +78,7 @@ public class DefaultClusterNodeProvider implements ClusterNodeProvider
 		   
 		   return nodes;
 	}
-
+	
 	@Override
 	public ClusterNode getClusterMember(NodeID node) throws ClusterException 
 	{
@@ -216,7 +234,30 @@ public class DefaultClusterNodeProvider implements ClusterNodeProvider
         }		
 	}
 	
-	
+	@Override
+	public void purgeClusterMemeber(NodeID node) throws ClusterException
+	{
+        Connection con = null;
+        PreparedStatement pstmt = null;
+        boolean abortTransaction = false;
+        try 
+        {
+        	con = DbConnectionManager.getTransactionConnection();
+            pstmt = con.prepareStatement(DELETE_CLUSTER_MEMBER);
+            pstmt.setString(1, node.toString());
+            pstmt.execute();
+        }
+        catch (Exception e) 
+        {
+            Log.error(e.getMessage(), e);
+            abortTransaction = true;
+        }
+        finally 
+        {
+            DbConnectionManager.closeStatement(pstmt);
+            DbConnectionManager.closeTransactionConnection(pstmt, con, abortTransaction);
+        }		
+	}
 	
 	@Override
 	public void purgeClusterMemebers(long inactiveDateThreshold) throws ClusterException 

@@ -63,17 +63,31 @@ public class ClusterManager {
      */
     protected static final int DEFAULT_HEARTBEAT_INTERVAL = 60;
     
+    /*
+     * Default threshold in hours that a cluster node's information is held in the database.
+     */
+    protected static final int DEFAULT_CLUSTER_CLEANER_KICKED_NODE_THRESHOLD = 24;
+    
+    /*
+     * Default cluster cleaner interval in seconds.  Default to 15 minutes (900 seconds)
+     */
+    protected static final int DEFAULT_CLUSTER_CLEANER_INTERVAL = 900;    
+    
     public static String CLUSTER_PROPERTY_NAME = "clustering.enabled";
     
     public static String CLUSTER_HEARTBEAT_THRESHOLD_NAME = "clustering.heartbeat.evictionThreshold";
     
     public static String CLUSTER_HEARTBEAT_INTERVAL_NAME = "clustering.heartbeat.interval";
     
+    public static String CLUSTER_CLEARNER_KICKED_NODE_THRESHOLD_NAME = "clustering.cleaner.kickedNodeThreshold";
+    
+    public static String CLUSTER_CLEARNER_INTERVAL_NAME = "clustering.cleaner.interval";    
+    
     private static Queue<ClusterEventListener> listeners = new ConcurrentLinkedQueue<>();
     private static BlockingQueue<Event> events = new LinkedBlockingQueue<>(10000);
     private static Thread dispatcher;
     private static Thread clusterHeartBeatThread;
-    
+    private static Thread clusterHeartCleanThread;    
     
     
 	@SuppressWarnings("rawtypes")
@@ -245,6 +259,26 @@ public class ClusterManager {
 	                		try
 	                		{
 	                			me = provider.getClusterMember(XMPPServer.getInstance().getNodeID());
+	                			if (me != null && me.getNodeLeftDtTm() != null)
+	                			{
+	                				// we were kicked from the cluster... need to shutdown this app instance
+	                				// and get restarted... mostly likely our clustered cache entries were
+	                				// purged as well
+	                				
+	                				try
+	                				{
+	                					Log.info("The node {} has been kicked from the cluster but is still running.  Initiating shut down of node.",
+	                							me.getNodeId().toString());
+	                					XMPPServer.getInstance().stop();
+	                				}
+	                				catch (Exception e)
+	                				{
+	                					Log.error("Error detected durning cluster kick shutdown of node {}", me.getNodeId().toString(), e);
+	                				}
+	                				
+	                				Log.info("Calling System.exit() on node {} due to detected cluster kick.", me.getNodeId().toString());
+	                				System.exit(0);
+	                			}
 	                		}
 	                		catch (ClusterNodeNotFoundException e)
 	                		{
@@ -369,6 +403,79 @@ public class ClusterManager {
         }
         clusterHeartBeatThread.setDaemon(true);
         clusterHeartBeatThread.start();
+    }
+    
+    private static void initCusterCleaner()
+    {
+        if (clusterHeartCleanThread == null || !clusterHeartCleanThread.isAlive()) 
+        {
+        	clusterHeartCleanThread = new Thread("ClusterManager cluster cleaner thread") 
+            {
+                @Override
+                public void run() 
+                {
+
+                	int kickedNodeThreshold = JiveGlobals.getIntProperty(CLUSTER_CLEARNER_KICKED_NODE_THRESHOLD_NAME, DEFAULT_CLUSTER_CLEANER_KICKED_NODE_THRESHOLD);
+                	int cleanerInterval = JiveGlobals.getIntProperty(CLUSTER_CLEARNER_INTERVAL_NAME, DEFAULT_CLUSTER_CLEANER_INTERVAL);
+                	
+                    // exit thread if/when clustering is disabled
+                    while (ClusterManager.isClusteringEnabled()) 
+                    {
+	                	try
+	                	{
+	                    	// Only the master none will do the clean up
+	                    	if (isSeniorClusterMember())
+	                    	{
+	
+	                    		Log.info("Master node {} is running cluster cleanup tasks.", XMPPServer.getInstance().getNodeID().toString());
+	                    		
+			                	final Collection<ClusterNode> nonMemberNodes = provider.getNonClusterMembers();
+			                		
+			                	for (ClusterNode node : nonMemberNodes)
+			                	{
+			                		Log.info("Purging caches for non cluster member node {}", node.getNodeId().toString());
+			                		
+			                		try
+			                		{
+			                			CacheFactory.purgeClusteredNodeCaches(node.getNodeId());	
+			                			
+			                			// check to see if this non member node has surpassed the kick threshold
+			                			final Instant kickThreshold = Instant.now().minus(kickedNodeThreshold, ChronoUnit.HOURS);
+			                			
+				                		if (node.getNodeLeftDtTm() != null &&  node.getNodeLeftDtTm().compareTo(kickThreshold) < 0)
+				                		{
+				                			// purge
+				                			Log.info("Purging cluster history information for cluster node {}", node.getNodeId().toString());
+				                			provider.purgeClusterMemeber(node.getNodeId());
+				                			
+				                		}
+			                		}
+			                		catch (Exception e)
+			                		{
+			                			Log.error("Error occured cleaning non cluster member node {}", node.getNodeId(), e);
+			                		}
+			                	}
+	                		}
+
+                    	}
+	                	catch (Exception e)
+	                	{
+	                		Log.error("Failed to perform cluster clean operation.", e);
+	                	}
+	                	
+                    	// sleep for the amount specified by the heart beat interval
+                    	try
+                    	{
+                    		Thread.sleep(cleanerInterval * 1000);
+                    	}
+                    	catch (Exception e)  {/* no-op */}
+                    }
+                }
+            };
+        }
+        
+        clusterHeartCleanThread.setDaemon(true);
+        clusterHeartCleanThread.start();        
     }
     
     /**
@@ -521,6 +628,7 @@ public class ClusterManager {
         	initEventDispatcher();
             CacheFactory.startClustering();
             initCusterHeartBeatMonitor();
+            initCusterCleaner();
         }
     }
 
