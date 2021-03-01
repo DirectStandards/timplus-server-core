@@ -124,7 +124,7 @@ public class MultiUserChatServiceImpl implements Component, MultiUserChatService
     /**
      * LocalMUCRoom chat manager which supports simple chatroom management
      */
-    private final LocalMUCRoomManager localMUCRoomManager = new LocalMUCRoomManager();
+    private final LocalMUCRoomManager localMUCRoomManager;
 
     /**
      * Chat users managed by this manager. This includes only users connected to this JVM.
@@ -275,8 +275,10 @@ public class MultiUserChatServiceImpl implements Component, MultiUserChatService
      */
     public MultiUserChatServiceImpl(final String subdomain, final String domain, final String description, final Boolean isHidden) {
         // Check subdomain and throw an IllegalArgumentException if its invalid
-        new JID(null,subdomain + "." + XMPPServer.getInstance().getServerInfo().getXMPPDomain(), null);
+        new JID(null,subdomain + "." + domain, null);
 
+        localMUCRoomManager = new LocalMUCRoomManager(LocalMUCRoomManager.createMUCServiceName(subdomain,  domain));
+        
         this.domain = domain;
         this.chatServiceName = subdomain;
         if (description != null && description.trim().length() > 0) {

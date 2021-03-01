@@ -12,6 +12,7 @@ import java.io.ObjectOutput;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -27,15 +28,30 @@ public class DefaultExternalizableUtilStrategy implements ExternalizableUtilStra
 	@Override
 	public void writeStringMap(DataOutput out, Map<String, String> stringMap) throws IOException 
 	{
-		// TODO Auto-generated method stub
+		out.writeInt(stringMap.size());
+		for (Entry<String, String> entry : stringMap.entrySet())
+		{
+			this.writeSafeUTF(out, entry.getKey());
+			this.writeSafeUTF(out, entry.getValue());
+		}
 		
 	}
 
 	@Override
 	public Map<String, String> readStringMap(DataInput in) throws IOException 
 	{
-		// TODO Auto-generated method stub
-		return null;
+		final Map<String, String> theMap = new HashMap<>();
+		
+		int retVal = in.readInt();
+		for (int i = 0; i < retVal; ++i)
+		{
+			final String key = this.readSafeUTF(in);
+			final String value = this.readSafeUTF(in);
+			
+			theMap.put(key, value);
+		}
+		
+		return theMap;
 	}
 
 	@Override
@@ -178,14 +194,22 @@ public class DefaultExternalizableUtilStrategy implements ExternalizableUtilStra
 	{
 		final byte[] bytes = StringUtils.getBytesUtf8(value);
 		
-		out.writeInt(bytes.length);
-		out.write(bytes);
-		
+		if (bytes == null)
+			out.writeInt(0);
+		else
+		{
+			out.writeInt(bytes.length);
+			out.write(bytes);
+		}
 	}
 
 	@Override
 	public String readSafeUTF(DataInput in) throws IOException {
 		final int length = in.readInt();
+		
+		if (length == 0)
+			return "";
+		
 		final byte[] bytes = new byte[length];
 		
 		in.readFully(bytes);

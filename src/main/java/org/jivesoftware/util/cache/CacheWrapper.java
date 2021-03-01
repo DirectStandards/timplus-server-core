@@ -164,4 +164,10 @@ public class CacheWrapper<K extends Serializable, V extends Serializable> implem
     {
     	cache.purgeClusteredNodeCaches(node);
     }
+
+	@Override
+	public boolean isNodeCachePurgeable() 
+	{
+		return cache.isNodeCachePurgeable();
+	}
 }

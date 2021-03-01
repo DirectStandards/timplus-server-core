@@ -52,9 +52,10 @@ public interface CacheFactoryStrategy {
      * the default configuration.
      *
      * @param name name of the cache to create.
+     * @param indicates is the cache is purgeable by node cache
      * @return newly created and configured cache.
      */
-    Cache createCache(String name);
+    Cache createCache(String name, boolean nodePurgeable);
 
     /**
      * Destroys the supplied cache.

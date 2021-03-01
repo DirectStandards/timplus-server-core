@@ -117,6 +117,11 @@ public class DefaultCache<K extends Serializable, V extends Serializable> implem
     private String name;
 
     /**
+     * Indicates if this cache can be purged by cache name.
+     */
+    private boolean cacheNodePurgable;
+    
+    /**
      * Create a new default cache and specify the maximum size of for the cache in
      * bytes, and the maximum lifetime of objects.
      *
@@ -126,11 +131,13 @@ public class DefaultCache<K extends Serializable, V extends Serializable> implem
      * @param maxLifetime the maximum amount of time objects can exist in
      *      cache before being deleted. -1 means objects never expire.
      */
-    DefaultCache(final String name, final long maxSize, final long maxLifetime) {
+    DefaultCache(final String name, final long maxSize, final long maxLifetime, boolean cacheNodePurgable) 
+    {
         this.name = name;
         this.maxCacheSize = maxSize;
         this.maxLifetime = maxLifetime;
-
+        this.cacheNodePurgable = cacheNodePurgable;
+        
         // Our primary data structure is a HashMap. The default capacity of 11
         // is too small in almost all cases, so we set it bigger.
         map = new HashMap<>(103);
@@ -648,4 +655,10 @@ public class DefaultCache<K extends Serializable, V extends Serializable> implem
     {
     	
     }
+
+	@Override
+	public boolean isNodeCachePurgeable() 
+	{
+		return cacheNodePurgable;
+	}
 }

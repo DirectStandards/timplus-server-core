@@ -89,7 +89,7 @@ public class MultiUserChatManager extends BasicModule implements ClusterEventLis
     private static final String outgoingStatKey = "muc_outgoing";
     private static final String trafficStatGroup = "muc_traffic";
 
-    private ConcurrentHashMap<String,MultiUserChatService> mucServices = new ConcurrentHashMap<>();
+    protected ConcurrentHashMap<String,MultiUserChatService> mucServices = new ConcurrentHashMap<>();
 
     /**
      * Default MUC service subdomain
@@ -437,7 +437,7 @@ public class MultiUserChatManager extends BasicModule implements ClusterEventLis
     /**
      * Loads the list of configured services stored in the database.
      */
-    private void loadServices() {
+    protected void loadServices() {
         Connection con = null;
         PreparedStatement pstmt = null;
         ResultSet rs = null;
@@ -467,7 +467,7 @@ public class MultiUserChatManager extends BasicModule implements ClusterEventLis
      * @param subdomain Subdomain to retrieve ID for.
      * @return ID number of service.
      */
-    private long loadServiceID(String subdomain, String domain) {
+    protected long loadServiceID(String subdomain, String domain) {
         Connection con = null;
         PreparedStatement pstmt = null;
         ResultSet rs = null;
@@ -499,7 +499,7 @@ public class MultiUserChatManager extends BasicModule implements ClusterEventLis
      * @param serviceID ID to retrieve subdomain for.
      * @return Subdomain of service.
      */
-    private String loadServiceDomain(Long serviceID) 
+    protected String loadServiceDomain(Long serviceID) 
     {
     	String serviceDomain = null;
         Connection con = null;
@@ -535,7 +535,7 @@ public class MultiUserChatManager extends BasicModule implements ClusterEventLis
      * @param description Description of MUC service.  Can be null for default description.
      * @param isHidden True if the service should be hidden from service listing.
      */
-    private void insertService(String subdomain, String domain, String description, Boolean isHidden) {
+    protected void insertService(String subdomain, String domain, String description, Boolean isHidden) {
         Connection con = null;
         PreparedStatement pstmt = null;
         Long serviceID = SequenceManager.nextID(JiveConstants.MUC_SERVICE);
@@ -568,7 +568,7 @@ public class MultiUserChatManager extends BasicModule implements ClusterEventLis
      * @param subdomain Subdomain to set service to.
      * @param description Description of MUC service.  Can be null for default description.
      */
-    private void updateService(Long serviceID, String subdomain, String domain, String description) {
+    protected void updateService(Long serviceID, String subdomain, String domain, String description) {
         Connection con = null;
         PreparedStatement pstmt = null;
         try {
@@ -596,7 +596,7 @@ public class MultiUserChatManager extends BasicModule implements ClusterEventLis
      * Deletes a service based on service ID.
      * @param serviceID ID of the service to delete.
      */
-    private void deleteService(Long serviceID) {
+    protected void deleteService(Long serviceID) {
         Connection con = null;
         PreparedStatement pstmt = null;
         try {

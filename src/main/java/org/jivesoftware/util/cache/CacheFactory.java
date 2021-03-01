@@ -453,6 +453,11 @@ public class CacheFactory {
         return values.toArray(new Cache[values.size()]);
     }
 
+    public static synchronized <T extends Cache> T createCache(String name) 
+    {
+    	return createCache(name, true);
+    }
+    
     /**
      * Returns the named cache, creating it as necessary.
      *
@@ -461,12 +466,12 @@ public class CacheFactory {
      * @return the named cache, creating it as necessary.
      */
     @SuppressWarnings("unchecked")
-    public static synchronized <T extends Cache> T createCache(String name) {
+    public static synchronized <T extends Cache> T createCache(String name, boolean nodePurgable) {
         T cache = (T) caches.get(name);
         if (cache != null) {
             return cache;
         }
-        cache = (T) cacheFactoryStrategy.createCache(name);
+        cache = (T) cacheFactoryStrategy.createCache(name, nodePurgable);
 
         log.info("Created cache [" + cacheFactoryStrategy.getClass().getName() + "] for " + name);
 
@@ -486,7 +491,7 @@ public class CacheFactory {
         if (cache != null) {
             return cache;
         }
-        cache = (T) localCacheFactoryStrategy.createCache(name);
+        cache = (T) localCacheFactoryStrategy.createCache(name, false);
         localOnly.add(name);
 
         log.info("Created local-only cache [" + localCacheFactoryClass + "] for " + name);
@@ -879,7 +884,7 @@ public class CacheFactory {
             .filter(CacheFactory::isClusterableCache)
             .forEach(cache -> {
                 final CacheWrapper cacheWrapper = ((CacheWrapper) cache);
-                final Cache clusteredCache = cacheFactoryStrategy.createCache(cacheWrapper.getName());
+                final Cache clusteredCache = cacheFactoryStrategy.createCache(cacheWrapper.getName(), cacheWrapper.isNodeCachePurgeable());
                 clusteredCache.putAll(cache);
                 cacheWrapper.setWrappedCache(clusteredCache);
             });
@@ -901,7 +906,7 @@ public class CacheFactory {
             .filter(CacheFactory::isClusterableCache)
             .forEach(cache -> {
                 final CacheWrapper cacheWrapper = ((CacheWrapper) cache);
-                final Cache standaloneCache = cacheFactoryStrategy.createCache(cacheWrapper.getName());
+                final Cache standaloneCache = cacheFactoryStrategy.createCache(cacheWrapper.getName(), cacheWrapper.isNodeCachePurgeable());
                 standaloneCache.putAll(cache);
                 cacheWrapper.setWrappedCache(standaloneCache);
             });
@@ -934,9 +939,11 @@ public class CacheFactory {
     {
     	if (clusteringStarted)
     	{
-            for (String cacheName : caches.keySet()) {
-                Cache cache = caches.get(cacheName);
-                cache.purgeClusteredNodeCaches(node);
+            for (String cacheName : caches.keySet()) 
+            {
+            	Cache cache = caches.get(cacheName);
+            	if (cache.isNodeCachePurgeable())
+            		cache.purgeClusteredNodeCaches(node);
             }
     	}
     }

@@ -500,5 +500,12 @@ public class CaffeineCache<K extends Serializable, V extends Serializable> imple
     public void purgeClusteredNodeCaches(NodeID node)
     {
     	
-    } 
+    }
+
+	@Override
+	public boolean isNodeCachePurgeable() 
+	{
+		// TODO Auto-generated method stub
+		return true;
+	} 
 }

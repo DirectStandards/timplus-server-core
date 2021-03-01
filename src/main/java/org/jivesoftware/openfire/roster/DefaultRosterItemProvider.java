@@ -76,8 +76,6 @@ public class DefaultRosterItemProvider implements RosterItemProvider {
              "INNER JOIN ofRoster ON ofRosterGroups.rosterID = ofRoster.rosterID " +
              "WHERE username=? ORDER BY ofRosterGroups.rosterID, %s";
 
-    private final Cache<String, LinkedList<RosterItem>> rosterItemCache = CacheFactory.createCache( "RosterItems" );
-
     /* (non-Javadoc)
      * @see org.jivesoftware.openfire.roster.RosterItemProvider#createItem(java.lang.String, org.jivesoftware.openfire.roster.RosterItem)
      */
@@ -88,7 +86,6 @@ public class DefaultRosterItemProvider implements RosterItemProvider {
         Connection con = null;
         PreparedStatement pstmt = null;
         try {
-            rosterItemCache.remove( username );
 
             long rosterID = SequenceManager.nextID(JiveConstants.ROSTER);
             con = DbConnectionManager.getConnection();
@@ -124,7 +121,6 @@ public class DefaultRosterItemProvider implements RosterItemProvider {
         PreparedStatement pstmt = null;
         long rosterID = item.getID();
         try {
-            rosterItemCache.remove( username );
 
             con = DbConnectionManager.getConnection();
             // Update existing roster item
@@ -162,7 +158,6 @@ public class DefaultRosterItemProvider implements RosterItemProvider {
         Connection con = null;
         PreparedStatement pstmt = null;
         try {
-            rosterItemCache.remove( username );
 
             con = DbConnectionManager.getConnection();
             // Remove roster groups
@@ -246,10 +241,7 @@ public class DefaultRosterItemProvider implements RosterItemProvider {
      */
     @Override
     public Iterator<RosterItem> getItems(String username) {
-        final LinkedList<RosterItem> cachedValue = rosterItemCache.get( username );
-        if ( cachedValue != null ) {
-            return cachedValue.iterator();
-        }
+
         LinkedList<RosterItem> itemList = new LinkedList<>();
         Map<Long, RosterItem> itemsByID = new HashMap<>();
         Connection con = null;
@@ -291,8 +283,6 @@ public class DefaultRosterItemProvider implements RosterItemProvider {
                     itemsByID.get(rs.getLong(1)).getGroups().add(rs.getString(2));
                 }
             }
-
-            rosterItemCache.put( username, itemList );
         }
         catch (SQLException e) {
             Log.error(LocaleUtils.getLocalizedString("admin.error"), e);

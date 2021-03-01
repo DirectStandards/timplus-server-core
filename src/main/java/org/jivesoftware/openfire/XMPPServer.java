@@ -232,6 +232,8 @@ public class XMPPServer {
      */
     private boolean setupMode = true;
 
+    public static final String MUC_MODULE_CLASS_NAME = "modules.muc.moduelClassName";    
+    
     private static final String STARTER_CLASSNAME =
             "org.jivesoftware.openfire.starter.ServerStarter";
     private static final String WRAPPER_CLASSNAME =
@@ -760,7 +762,8 @@ public class XMPPServer {
         }
     }
 
-    private void loadModules() {
+    private void loadModules() 
+    {
         // Load boot modules
         loadModule(RoutingTableImpl.class.getName());
         loadModule(AuditManagerImpl.class.getName());
@@ -810,7 +813,10 @@ public class XMPPServer {
         loadModule(UpdateManager.class.getName());
         loadModule(FlashCrossDomainHandler.class.getName());
         loadModule(InternalComponentManager.class.getName());
-        loadModule(MultiUserChatManager.class.getName());
+        
+        final String mucClassName = JiveGlobals.getProperty(MUC_MODULE_CLASS_NAME, MultiUserChatManager.class.getName());
+
+        loadModule(mucClassName);
         //loadModule(IQMessageCarbonsHandler.class.getName());
         loadModule(ArchiveManager.class.getName());
         loadModule(CertificateStoreManager.class.getName());
@@ -1750,8 +1756,19 @@ public class XMPPServer {
      *
      * @return the <code>MultiUserChatManager</code> registered with this server.
      */
-    public MultiUserChatManager getMultiUserChatManager() {
-        return (MultiUserChatManager) modules.get(MultiUserChatManager.class);
+    public MultiUserChatManager getMultiUserChatManager() 
+    {
+    	final String mucClassName = JiveGlobals.getProperty(MUC_MODULE_CLASS_NAME, MultiUserChatManager.class.getName());
+    	try
+    	{
+    		final Class<?> mucClass = Class.forName(mucClassName);
+    		return (MultiUserChatManager) modules.get(mucClass);
+    	}
+    	catch (Exception e)
+    	{
+    		throw new IllegalStateException("Failed to get multi user chat manager.", e);
+    	}
+    	
     }
 
     /**

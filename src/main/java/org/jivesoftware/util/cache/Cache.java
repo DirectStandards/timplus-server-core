@@ -244,4 +244,12 @@ public interface Cache<K, V> extends java.util.Map<K, V> {
      * @param node The node whose caches will be purged.
      */
     void purgeClusteredNodeCaches(NodeID node);
+    
+    /**
+     * Some caches need to be persisted regardless or what node in the cluster created them
+     * If this is true, then the cache can be purged by cluster node ID.  Otherwise, this
+     * cache is exempt from being purged by cluster node ID;
+     * @return True if this cache can be purged by cluster node id.
+     */
+    boolean isNodeCachePurgeable();
 }

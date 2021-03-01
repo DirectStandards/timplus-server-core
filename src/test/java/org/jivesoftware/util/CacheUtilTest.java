@@ -41,7 +41,7 @@ public class CacheUtilTest
         // Setup test fixture.
         final ArrayList<String> collection = new ArrayList<>();
         collection.add( "existing value" );
-        final Cache<String, ArrayList<String>> cache = new DefaultLocalCacheStrategy().createCache( "test" );
+        final Cache<String, ArrayList<String>> cache = new DefaultLocalCacheStrategy().createCache( "test" , true);
         cache.put( "existing key", collection );
 
         // Execute system under test.
@@ -70,7 +70,7 @@ public class CacheUtilTest
         // Setup test fixture.
         final ArrayList<String> collection = new ArrayList<>();
         collection.add( "existing value" );
-        final Cache<String, ArrayList<String>> cache = new DefaultLocalCacheStrategy().createCache( "test" );
+        final Cache<String, ArrayList<String>> cache = new DefaultLocalCacheStrategy().createCache( "test", true );
         cache.put( "existing key", collection );
 
         // Execute system under test.
@@ -99,7 +99,7 @@ public class CacheUtilTest
     public void testRemoveElementFromNonExistentCollection() throws Exception
     {
         // Setup test fixture.
-        final Cache<String, ArrayList<String>> cache = new DefaultLocalCacheStrategy().createCache( "test" );
+        final Cache<String, ArrayList<String>> cache = new DefaultLocalCacheStrategy().createCache( "test" , true);
 
         // Execute system under test.
         Throwable result = null;

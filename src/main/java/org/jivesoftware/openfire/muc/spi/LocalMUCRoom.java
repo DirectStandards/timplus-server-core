@@ -71,7 +71,6 @@ import org.jivesoftware.openfire.muc.cluster.UpdatePresence;
 import org.jivesoftware.openfire.user.UserAlreadyExistsException;
 import org.jivesoftware.openfire.user.UserNotFoundException;
 import org.jivesoftware.util.JiveConstants;
-import org.jivesoftware.util.JiveGlobals;
 import org.jivesoftware.util.LocaleUtils;
 import org.jivesoftware.util.NotFoundException;
 import org.jivesoftware.util.cache.CacheFactory;
@@ -346,7 +345,7 @@ public class LocalMUCRoom implements MUCRoom, GroupEventListener {
      * @param roomname the name of the room.
      * @param packetRouter the router for sending packets from the room.
      */
-    LocalMUCRoom(MultiUserChatService chatservice, String roomname, PacketRouter packetRouter) {
+    public LocalMUCRoom(MultiUserChatService chatservice, String roomname, PacketRouter packetRouter) {
         this.mucService = chatservice;
         this.name = roomname;
         this.naturalLanguageName = roomname;
@@ -2724,10 +2723,23 @@ public class LocalMUCRoom implements MUCRoom, GroupEventListener {
         ExternalizableUtil.getInstance().writeSafeUTF(out, name);
         ExternalizableUtil.getInstance().writeLong(out, startTime);
         ExternalizableUtil.getInstance().writeLong(out, lockedTime);
-        ExternalizableUtil.getInstance().writeSerializableCollection(out, owners);
-        ExternalizableUtil.getInstance().writeSerializableCollection(out, admins);
-        ExternalizableUtil.getInstance().writeSerializableMap(out, members);
-        ExternalizableUtil.getInstance().writeSerializableCollection(out, outcasts);
+        
+        final List<String> ownerStrings = new LinkedList<>();
+        owners.forEach(owner -> ownerStrings.add(owner.toString()));
+        ExternalizableUtil.getInstance().writeStringList(out, ownerStrings);
+        
+        final List<String> adminStrings = new LinkedList<>();
+        admins.forEach(admin -> adminStrings.add(admin.toString()));
+        ExternalizableUtil.getInstance().writeStringList(out, adminStrings);
+
+        final Map<String, String> memberMap = new HashMap<>();
+        members.forEach((key, value) -> memberMap.put(key.toString(), value));
+        ExternalizableUtil.getInstance().writeStringMap(out, memberMap);
+        
+        final List<String> outcastStrings = new LinkedList<>();
+        outcasts.forEach(outcast -> outcastStrings.add(outcast.toString()));
+        ExternalizableUtil.getInstance().writeStringList(out, outcastStrings);
+        
         ExternalizableUtil.getInstance().writeSafeUTF(out, naturalLanguageName);
         ExternalizableUtil.getInstance().writeSafeUTF(out, description);
         ExternalizableUtil.getInstance().writeBoolean(out, canOccupantsChangeSubject);
@@ -2765,10 +2777,19 @@ public class LocalMUCRoom implements MUCRoom, GroupEventListener {
         name = ExternalizableUtil.getInstance().readSafeUTF(in);
         startTime = ExternalizableUtil.getInstance().readLong(in);
         lockedTime = ExternalizableUtil.getInstance().readLong(in);
-        ExternalizableUtil.getInstance().readSerializableCollection(in, owners, getClass().getClassLoader());
-        ExternalizableUtil.getInstance().readSerializableCollection(in, admins, getClass().getClassLoader());
-        ExternalizableUtil.getInstance().readSerializableMap(in, members, getClass().getClassLoader());
-        ExternalizableUtil.getInstance().readSerializableCollection(in, outcasts, getClass().getClassLoader());
+        
+        List<String> stringList = ExternalizableUtil.getInstance().readStringList(in);
+        stringList.forEach(str -> owners.add(new JID(str, true)));
+        
+        stringList = ExternalizableUtil.getInstance().readStringList(in);
+        stringList.forEach(str -> admins.add(new JID(str, true)));
+        
+        Map<String, String> stringMap = ExternalizableUtil.getInstance().readStringMap(in);
+        stringMap.forEach((key, value) -> members.put(new JID(key, true), value));
+        
+        stringList = ExternalizableUtil.getInstance().readStringList(in);
+        stringList.forEach(str -> outcasts.add(new JID(str, true)));
+        
         naturalLanguageName = ExternalizableUtil.getInstance().readSafeUTF(in);
         description = ExternalizableUtil.getInstance().readSafeUTF(in);
         canOccupantsChangeSubject = ExternalizableUtil.getInstance().readBoolean(in);
