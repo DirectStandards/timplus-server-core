@@ -23,9 +23,9 @@ public class LocalMUCRoomManager {
 	
 	public static final String LOCAL_ROOM_MANAGER_CACHE_BASE_NAME = "LocalMUC Room Mangaer Cache";
 	
-	//protected final Cache<String, LocalMUCRoom> rooms;
+	protected final Cache<String, LocalMUCRoom> rooms;
     
-	private final Map<String, LocalMUCRoom> rooms = new ConcurrentHashMap<>();
+	//private final Map<String, LocalMUCRoom> rooms = new ConcurrentHashMap<>();
 	
     /*
      * The name of the multi user chat service.  This would be groupchat.<domain name>;
@@ -36,7 +36,7 @@ public class LocalMUCRoomManager {
     {
     	this.serviceName = serviceName;
     	
-    	//rooms = CacheFactory.createCache(LOCAL_ROOM_MANAGER_CACHE_BASE_NAME + serviceName, false);
+    	rooms = CacheFactory.createCache(LOCAL_ROOM_MANAGER_CACHE_BASE_NAME + serviceName, false);
     }
     
     public String getServiceName() 
@@ -49,7 +49,6 @@ public class LocalMUCRoomManager {
     }
     public void addRoom(final String roomname, final LocalMUCRoom room)
     {
-    	Log.info("Adding room {} to service name {} ", roomname, serviceName);
     	rooms.put(roomname, room);
         /*
          * No group support
@@ -62,15 +61,8 @@ public class LocalMUCRoomManager {
     }
     
     public LocalMUCRoom getRoom(final String roomname)
-    {
-    	Log.info("Looking up room {} from service name {} ", roomname, serviceName);
-    	
-    	final LocalMUCRoom room = rooms.get(roomname);
-    	
-    	if (room == null)
-    		Log.info("Room {} in service name {} was not found.", roomname, serviceName);
-    	
-    	return room;
+    {	    	
+    	return rooms.get(roomname);
     }
     
     public LocalMUCRoom removeRoom(final String roomname){
@@ -98,5 +90,9 @@ public class LocalMUCRoomManager {
     	return new StringBuilder(service).append("@").append(domain).toString();
     }
     
-    
+
+    void persistRoomCacheState(LocalMUCRoom room)
+    {
+    	rooms.put(room.getName(), room);
+    }
 }

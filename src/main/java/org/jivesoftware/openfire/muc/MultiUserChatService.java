@@ -488,4 +488,10 @@ public interface MultiUserChatService extends Component {
      * @param name Name of identity to remove.
      */
     void removeExtraIdentity(String name);
+    
+    /**
+     * Persists the cache state of a local room.
+     * @param room The room to persist.
+     */
+    void persistRoomCacheState(LocalMUCRoom room);
 }

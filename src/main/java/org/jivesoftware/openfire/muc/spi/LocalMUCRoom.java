@@ -16,11 +16,13 @@
 
 package org.jivesoftware.openfire.muc.spi;
 
+import java.io.Externalizable;
 import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
 import java.text.MessageFormat;
 import java.util.*;
+import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -556,6 +558,10 @@ public class LocalMUCRoom implements MUCRoom, GroupEventListener {
         boolean clientOnlyJoin = false;
         // A "client only join" here is one where the client is already joined, but has re-joined.
         try {
+        	
+        	Log.info("Nickname {} is attempting to join room {} from node {} that currently has {} occupants.", nickname, 
+        			this.getName(), XMPPServer.getInstance().getNodeID().toString(), this.occupantsByFullJID.size());
+        	
             // If the room has a limit of max user then check if the limit has been reached
             if (!canJoinRoom(user)) {
                 throw new ServiceUnavailableException();
@@ -680,7 +686,8 @@ public class LocalMUCRoom implements MUCRoom, GroupEventListener {
         }
         // Notify other cluster nodes that a new occupant joined the room
         CacheFactory.doClusterTask(new OccupantAddedEvent(this, joinRole));
-
+        mucService.persistRoomCacheState(this);
+        
         // Send presence of existing occupants to new occupant
         sendInitialPresences(joinRole);
         // It is assumed that the room is new based on the fact that it's locked and
@@ -762,7 +769,10 @@ public class LocalMUCRoom implements MUCRoom, GroupEventListener {
      * @param joinRole the role of the new occupant in the room.
      */
     private void sendInitialPresences(MUCRole joinRole) {
-        for (MUCRole occupant : occupantsByFullJID.values()) {
+        Log.info("Preparing to send presence of {} occupants in room {} to new occupant with JID {} and nickname {}", 
+        		occupantsByFullJID.values().size(), this.getName(), joinRole.getUserAddress(), joinRole.getNickname());
+    	
+    	for (MUCRole occupant : occupantsByFullJID.values()) {
             if (occupant == joinRole) {
                 continue;
             }
@@ -784,6 +794,10 @@ public class LocalMUCRoom implements MUCRoom, GroupEventListener {
                         "http://jabber.org/protocol/muc#user");
                 frag.element("item").addAttribute("jid", null);
             }
+            
+            Log.info("Sending presence of occupant nickname {} in room {} to new occupant nickname {}", 
+            		occupant.getNickname(), this.getName(), joinRole.getNickname());
+            
             joinRole.send(occupantPresence);
         }
     }
@@ -833,12 +847,14 @@ public class LocalMUCRoom implements MUCRoom, GroupEventListener {
 
     @Override
     public void leaveRoom(MUCRole leaveRole) {
-        if (leaveRole.isLocal()) {
+        /*
+    	if (leaveRole.isLocal()) {
             // Ask other cluster nodes to remove occupant from room
             OccupantLeftEvent event = new OccupantLeftEvent(this, leaveRole);
             CacheFactory.doClusterTask(event);
         }
-
+        */
+        
         try {
             Presence originalPresence = leaveRole.getPresence();
             Presence presence = originalPresence.createCopy();
@@ -906,6 +922,8 @@ public class LocalMUCRoom implements MUCRoom, GroupEventListener {
                     MUCEventDispatcher.roomDestroyed(getRole().getRoleAddress());
                 }
             }
+            else
+            	mucService.persistRoomCacheState(this);
             if (occupantsByFullJID.isEmpty()) {
                 // Update the date when the last occupant left the room
                 setEmptyDate(new Date());
@@ -933,13 +951,31 @@ public class LocalMUCRoom implements MUCRoom, GroupEventListener {
         String nickname = leaveRole.getNickname();
         lock.writeLock().lock();
         try {
-            occupantsByNickname.computeIfPresent(nickname.toLowerCase(), (n, occupants) -> {
-                occupants.remove(leaveRole);
+            occupantsByNickname.computeIfPresent(nickname.toLowerCase(), (n, occupants) -> 
+            {
+                for (int i = 0; i < occupants.size(); ++i)
+                {
+                	final MUCRole role = occupants.get(i);
+                	if (role.getRole().equals(leaveRole.getRole()))
+                	{
+                		occupants.remove(i);
+                		break;
+                	}
+                }
                 return occupants.isEmpty() ? null : occupants;
             });
 
-            occupantsByBareJID.computeIfPresent(bareJID,(jid, occupants) -> {
-                occupants.remove(leaveRole);
+            occupantsByBareJID.computeIfPresent(bareJID,(jid, occupants) -> 
+            {
+                for (int i = 0; i < occupants.size(); ++i)
+                {
+                	final MUCRole role = occupants.get(i);
+                	if (role.getRole().equals(leaveRole.getRole()))
+                	{
+                		occupants.remove(i);
+                		break;
+                	}
+                }            	
                 return occupants.isEmpty() ? null : occupants;
             });
 
@@ -1181,7 +1217,7 @@ public class LocalMUCRoom implements MUCRoom, GroupEventListener {
             try
             {
                 if (!occupant.isLocal()) {
-                    continue;
+                    //continue;
                 }
                 // Don't include the occupant's JID if the room is semi-anon and the new occupant
                 // is not a moderator
@@ -1246,10 +1282,10 @@ public class LocalMUCRoom implements MUCRoom, GroupEventListener {
             {
                 // Do not send broadcast messages to deaf occupants or occupants hosted in
                 // other cluster nodes
-                if ( occupant.isLocal() && !occupant.isVoiceOnly() )
-                {
+                //if ( occupant.isLocal() && !occupant.isVoiceOnly() )
+                //{
                     occupant.send( message );
-                }
+                //}
             }
             catch ( Exception e )
             {
@@ -1429,6 +1465,8 @@ public class LocalMUCRoom implements MUCRoom, GroupEventListener {
                 }
             }
         }
+        
+        mucService.persistRoomCacheState(this);
         // Answer all the updated presences
         return presences;
     }
@@ -1473,6 +1511,7 @@ public class LocalMUCRoom implements MUCRoom, GroupEventListener {
                 }
             }
         }
+        mucService.persistRoomCacheState(this);
         return null;
     }
 
@@ -1890,6 +1929,8 @@ public class LocalMUCRoom implements MUCRoom, GroupEventListener {
                 Log.error("Error updating presences for " + occupantJID, e);
             }
         }
+        mucService.persistRoomCacheState(this);
+        
         return updatedPresences;
     }
 
@@ -1928,7 +1969,8 @@ public class LocalMUCRoom implements MUCRoom, GroupEventListener {
         // MUC role.
         final UpdatePresence clusterUpdateRequest = new UpdatePresence(this, updatedPresence, occupantNickName);
         CacheFactory.doClusterTask(clusterUpdateRequest);
-
+        mucService.persistRoomCacheState(this);
+        
         // Broadcast updated presence of occupant.
         broadcastPresence(updatedPresence, false);
     }
@@ -1991,6 +2033,7 @@ public class LocalMUCRoom implements MUCRoom, GroupEventListener {
                 }
             }
         }
+        mucService.persistRoomCacheState(this);
         return result;
     }
 
@@ -2045,6 +2088,7 @@ public class LocalMUCRoom implements MUCRoom, GroupEventListener {
         request.setOriginator(true);
         request.run();
 
+        mucService.persistRoomCacheState(this);
         // Broadcast new presence of occupant
         broadcastPresence(occupantRole.getPresence().createCopy(), false);
     }
@@ -2090,6 +2134,7 @@ public class LocalMUCRoom implements MUCRoom, GroupEventListener {
 
             // Let other cluster nodes that the room has been updated
             CacheFactory.doClusterTask(new RoomUpdatedEvent(this));
+            mucService.persistRoomCacheState(this);
         }
         else {
             throw new ForbiddenException();
@@ -2354,6 +2399,7 @@ public class LocalMUCRoom implements MUCRoom, GroupEventListener {
                 // Remove the occupant from the room's occupants lists
                 event = new OccupantLeftEvent(this, kickedRole);
                 CacheFactory.doClusterTask(event);
+                mucService.persistRoomCacheState(this);
             }
         }
     }
@@ -2722,7 +2768,7 @@ public class LocalMUCRoom implements MUCRoom, GroupEventListener {
     public void writeExternal(ObjectOutput out) throws IOException {
         ExternalizableUtil.getInstance().writeSafeUTF(out, name);
         ExternalizableUtil.getInstance().writeLong(out, startTime);
-        ExternalizableUtil.getInstance().writeLong(out, lockedTime);
+        ExternalizableUtil.getInstance().writeLong(out, lockedTime);      
         
         final List<String> ownerStrings = new LinkedList<>();
         owners.forEach(owner -> ownerStrings.add(owner.toString()));
@@ -2770,6 +2816,33 @@ public class LocalMUCRoom implements MUCRoom, GroupEventListener {
         ExternalizableUtil.getInstance().writeBoolean(out, savedToDB);
         ExternalizableUtil.getInstance().writeSafeUTF(out, mucService.getServiceName());
         ExternalizableUtil.getInstance().writeSafeUTF(out, mucService.getDomain());
+        
+        
+        final Map<String, List<? extends Externalizable>> occupantsByNicknameSerial = new HashMap<>();
+        for (Entry<String, List<MUCRole>> entry: occupantsByNickname.entrySet())
+        {
+        	final List<OccupantAddedEvent> events = new LinkedList<>();
+        	entry.getValue().forEach(role -> events.add(new OccupantAddedEvent(this, role)));
+        	occupantsByNicknameSerial.put(entry.getKey(), events);
+        }
+        ExternalizableUtil.getInstance().writeExternalizableListMap(out, occupantsByNicknameSerial);
+        
+        final Map<String, List<? extends Externalizable>> occupantsByBareJIDSerial = new HashMap<>();
+        for (Entry<JID, List<MUCRole>> entry: occupantsByBareJID.entrySet())
+        {
+        	final List<OccupantAddedEvent> events = new LinkedList<>();
+        	entry.getValue().forEach(role -> events.add(new OccupantAddedEvent(this, role)));
+        	occupantsByBareJIDSerial.put(entry.getKey().toString(), events);
+        }
+        ExternalizableUtil.getInstance().writeExternalizableListMap(out, occupantsByBareJIDSerial);  
+        
+        final Map<String, OccupantAddedEvent> occupantsByFullJIDSerial = new HashMap<>();
+        for (Entry<JID, MUCRole> entry: occupantsByFullJID.entrySet())
+        {
+        	occupantsByFullJIDSerial.put(entry.getKey().toString(), new OccupantAddedEvent(this, entry.getValue()));
+        }
+        ExternalizableUtil.getInstance().writeExternalizableMap(out, occupantsByFullJIDSerial);  
+        
     }
 
     @Override
@@ -2827,6 +2900,42 @@ public class LocalMUCRoom implements MUCRoom, GroupEventListener {
         this.iqAdminHandler = new IQAdminHandler(this, packetRouter);
 
         router = packetRouter;
+        
+        
+        final Map<String, List<? extends Externalizable>> occupantsByNicknameSerial = new HashMap<>();
+        ExternalizableUtil.getInstance().readExternalizableListMap(in, occupantsByNicknameSerial, null);
+        for (Entry<String, List<? extends Externalizable>> entry : occupantsByNicknameSerial.entrySet())
+        {
+        	final List<MUCRole> roles = new LinkedList<>();
+        	entry.getValue().forEach(event -> {
+        		final OccupantAddedEvent ev = (OccupantAddedEvent)event;
+        		final RemoteMUCRole remoteRole = new RemoteMUCRole(mucService, ev, this);
+        		roles.add(remoteRole);
+        	});
+        	occupantsByNickname.put(entry.getKey(), roles);
+        }      
+        
+        final Map<String, List<? extends Externalizable>> occupantsByBareJIDSerial = new HashMap<>();
+        ExternalizableUtil.getInstance().readExternalizableListMap(in, occupantsByBareJIDSerial, null);
+        for (Entry<String, List<? extends Externalizable>> entry : occupantsByBareJIDSerial.entrySet())
+        {
+        	final List<MUCRole> roles = new LinkedList<>();
+        	entry.getValue().forEach(event -> {
+        		final OccupantAddedEvent ev = (OccupantAddedEvent)event;
+        		final RemoteMUCRole remoteRole = new RemoteMUCRole(mucService, ev, this);
+        		roles.add(remoteRole);
+        	});
+        	occupantsByBareJID.put(new JID(entry.getKey(), true), roles);
+        }  
+        
+        final Map<String, ? extends Externalizable> occupantsByFullJIDSerial = new HashMap<>();
+        ExternalizableUtil.getInstance().readExternalizableMap(in, occupantsByFullJIDSerial, null);
+        for (Entry<String, ? extends Externalizable> entry : occupantsByFullJIDSerial.entrySet())
+        {
+        	final OccupantAddedEvent ev = (OccupantAddedEvent)entry.getValue();
+        	final RemoteMUCRole remoteRole = new RemoteMUCRole(mucService, ev, this);
+        	occupantsByFullJID.put(new JID(entry.getKey(), true), remoteRole);
+        }
     }
 
     public void updateConfiguration(LocalMUCRoom otherRoom) {

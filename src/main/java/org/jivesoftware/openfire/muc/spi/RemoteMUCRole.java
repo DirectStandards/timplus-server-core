@@ -60,7 +60,13 @@ public class RemoteMUCRole implements MUCRole, Externalizable {
     public RemoteMUCRole() {
     }
 
-    public RemoteMUCRole(MultiUserChatService server, OccupantAddedEvent event) {
+    public RemoteMUCRole(MultiUserChatService server, OccupantAddedEvent event) 
+    {
+    	this(server, event, null);
+
+    }
+
+    public RemoteMUCRole(MultiUserChatService server, OccupantAddedEvent event, MUCRoom room) {
         this.serviceDomain = server.getServiceDomain();
         presence = event.getPresence();
         role = event.getRole();
@@ -69,10 +75,10 @@ public class RemoteMUCRole implements MUCRole, Externalizable {
         voiceOnly = event.isVoiceOnly();
         roleAddress = event.getRoleAddress();
         userAddress = event.getUserAddress();
-        room = event.getRoom();
+        this.room = (room == null) ? event.getRoom() : room;
         this.nodeID = event.getNodeID();
-    }
-
+    }    
+    
     @Override
     public Presence getPresence() {
         return presence;
@@ -157,6 +163,7 @@ public class RemoteMUCRole implements MUCRole, Externalizable {
 
     @Override
     public void send(Packet packet) {
+    	packet.setTo(userAddress);
         XMPPServer.getInstance().getRoutingTable().routePacket(userAddress, packet, false);
     }
 

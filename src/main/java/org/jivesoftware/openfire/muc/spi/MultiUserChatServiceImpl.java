@@ -1844,4 +1844,8 @@ public class MultiUserChatServiceImpl implements Component, MultiUserChatService
         return isHidden;
     }
 
+    public void persistRoomCacheState(LocalMUCRoom room)
+    {
+    	localMUCRoomManager.persistRoomCacheState(room);
+    }
 }

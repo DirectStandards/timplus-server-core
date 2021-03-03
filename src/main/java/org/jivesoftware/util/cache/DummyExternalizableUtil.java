@@ -269,4 +269,20 @@ public class DummyExternalizableUtil implements ExternalizableUtilStrategy {
         // Do nothing
         return 0;
     }
+
+	@Override
+	public void writeExternalizableListMap(DataOutput out, Map<String, List<? extends Externalizable>> map)
+			throws IOException {
+        // Do nothing
+		
+	}
+
+	@Override
+	public int readExternalizableListMap(DataInput in, Map<String, List<? extends Externalizable>> map,
+			ClassLoader loader) throws IOException {
+        // Do nothing
+		return 0;
+	}
+    
+    
 }

@@ -372,4 +372,28 @@ public class ExternalizableUtil {
     public int readStrings(DataInput in, Collection<String> collection) throws IOException {
         return strategy.readStrings(in, collection);
     }
+    
+    /**
+     * Writes a map consisting of a string key and a list of Externalizable objects to the output stream.
+     * @param out the output stream.
+     * @param map  The map to be written
+     * @throws IOException if an error occurs.
+     */
+    public void writeExternalizableListMap(DataOutput out, Map<String, List<? extends Externalizable>> map) throws IOException
+    {
+    	strategy.writeExternalizableListMap(out, map);
+    }
+
+    /**
+     * Reads the keys and list of Externalizable objects from the input stream and adds them to the specified map.
+     * @param in in the input stream.
+     * @param map The map that the keys and elements will be added to
+     * @param loader
+     * @return The number of items in the map.
+     * @throws IOException if an error occurs.
+     */
+    public int readExternalizableListMap(DataInput in, Map<String, List<? extends Externalizable>> map, ClassLoader loader) throws IOException
+    {
+    	return strategy.readExternalizableListMap(in, map, loader);
+    }
 }

@@ -290,6 +290,57 @@ public class DefaultExternalizableUtilStrategy implements ExternalizableUtilStra
 	}
 
 	@Override
+    public void writeExternalizableListMap(DataOutput out, Map<String, List<? extends Externalizable>> map) throws IOException
+    {
+		out.writeInt(map.size());
+		for (Entry<String, List<? extends Externalizable>> entry : map.entrySet())
+		{
+			this.writeSafeUTF(out, entry.getKey());
+			out.writeInt(entry.getValue().size());
+			for (Externalizable ext : entry.getValue())
+			{
+				this.writeSafeUTF(out, ext.getClass().getName());
+				ext.writeExternal((ObjectOutput)out);
+			}
+		}    	
+    }
+
+	@Override
+    public int readExternalizableListMap(DataInput in, Map<String, List<? extends Externalizable>> map, ClassLoader loader) throws IOException
+    {
+		final Map theMap = map;
+		
+		int retVal = in.readInt();
+		for (int i = 0; i < retVal; ++i)
+		{
+			try
+			{
+				final String key = this.readSafeUTF(in);
+				final List<Externalizable> list = new LinkedList<>();
+				
+				final int listCount = this.readInt(in);
+				for (int j = 0; j < listCount; ++j)
+				{
+					final String valueClassName = this.readSafeUTF(in);
+					Class<Externalizable> valueClass = (Class<Externalizable>)this.getClass().getClassLoader().loadClass(valueClassName);
+					final Externalizable value = valueClass.newInstance();
+		
+					value.readExternal((ObjectInput)in);
+					
+					list.add(value);
+				}
+				theMap.put(key, list);
+			}
+			catch (Exception e)
+			{
+				throw new IllegalStateException("Failed to read externalizable object.");
+			}
+		}
+		
+		return retVal;		
+    }
+	
+	@Override
 	public void writeSerializableMap(DataOutput out, Map<? extends Serializable, ? extends Serializable> map)
 			throws IOException {
 		// TODO Auto-generated method stub
