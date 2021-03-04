@@ -364,8 +364,9 @@ public class PresenceManagerImpl extends BasicModule implements PresenceManager,
                 // Local probers should receive presences of probee in all connected resources
                 Collection<JID> proberFullJIDs = new ArrayList<>();
                 if (prober.getResource() == null && server.isLocal(prober)) {
-                    for (ClientSession session : sessionManager.getSessions(prober.toBareJID())) {
-                        proberFullJIDs.add(session.getAddress());
+                    for (JID resourceJID : XMPPServer.getInstance().getRoutingTable().getRoutes(prober, null)) 
+                    {
+                        proberFullJIDs.add(resourceJID);
                     }
                 }
                 else {

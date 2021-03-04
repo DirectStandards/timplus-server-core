@@ -26,6 +26,7 @@ import org.jivesoftware.openfire.PresenceManager;
 import org.jivesoftware.openfire.XMPPServer;
 import org.jivesoftware.openfire.auth.UnauthorizedException;
 import org.jivesoftware.openfire.disco.ServerFeaturesProvider;
+import org.jivesoftware.openfire.domain.DomainManager;
 import org.jivesoftware.openfire.privacy.PrivacyList;
 import org.jivesoftware.openfire.privacy.PrivacyListManager;
 import org.jivesoftware.openfire.privacy.PrivacyListProvider;
@@ -230,16 +231,25 @@ public class IQBlockingHandler extends IQHandler implements ServerFeaturesProvid
                  * Do a presence probe of each unblocked contact
                  * so the client can receive a presence notification
                  */
-            	final Presence presencePacket = new Presence();
-                presencePacket.setType(Presence.Type.probe);
-                presencePacket.setTo(recipient);
-                presencePacket.setFrom(XMPPServer.getInstance().createJID( user.getUsername(), user.getDomain(), null));
-                XMPPServer.getInstance().getPacketDeliverer().deliver(presencePacket);
+                
+                if (DomainManager.getInstance().isRegisteredDomain(recipient.getDomain()))
+                {
+                	presenceManager.probePresence(XMPPServer.getInstance().createJID( user.getUsername(), user.getDomain(), null ), recipient.asBareJID());
+                }
+                else
+                {
+	            	final Presence presencePacket = new Presence();
+	                presencePacket.setType(Presence.Type.probe);
+	                presencePacket.setTo(recipient);
+	                presencePacket.setFrom(XMPPServer.getInstance().createJID( user.getUsername(), user.getDomain(), null));
+	                XMPPServer.getInstance().getPacketDeliverer().deliver(presencePacket);
+                }
             }
             catch ( UserNotFoundException | PacketException  | UnauthorizedException e)
             {
                 Log.error( "Unable to send presence information of user '{}' to unblocked entity '{}' as local user is not found.", user.getUsername(), recipient );
             }
+
         }
     }
 
@@ -351,21 +361,23 @@ public class IQBlockingHandler extends IQHandler implements ServerFeaturesProvid
 
         Log.debug( "Pushing blocklist updates to all resources of user '{}' that have previously requested the blocklist.", user.getUsername() );
 
-        final Collection<ClientSession> sessions = sessionManager.getSessions( user.getUsername() );
-        for ( final ClientSession session : sessions )
+        //final Collection<ClientSession> sessions = sessionManager.getSessions( user.getUsername() );
+        /*
+         * In TIM+, we will send the block list to all connected resources
+         */
+        final Collection<JID> resourceJIDs = XMPPServer.getInstance().getRoutingTable().getRoutes(user.getJID(), null);
+        //for ( final ClientSession session : sessions )
+        for (JID resourceJID : resourceJIDs)
         {
-            if ( session.hasRequestedBlocklist() )
+            final IQ iq = new IQ( IQ.Type.set );
+            iq.setTo( resourceJID );
+            final Element block = iq.setChildElement( "block", "urn:xmpp:blocking" );
+            for ( final JID newBlock : newBlocks )
             {
-                final IQ iq = new IQ( IQ.Type.set );
-                iq.setTo( session.getAddress() );
-                final Element block = iq.setChildElement( "block", "urn:xmpp:blocking" );
-                for ( final JID newBlock : newBlocks )
-                {
-                    block.addElement( "item" ).addAttribute( "jid", newBlock.toString() );
-                }
-
-                XMPPServer.getInstance().getPacketRouter().route( iq );
+                block.addElement( "item" ).addAttribute( "jid", newBlock.toString() );
             }
+
+            XMPPServer.getInstance().getPacketRouter().route( iq );
         }
     }
 
