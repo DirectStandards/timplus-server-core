@@ -77,7 +77,7 @@ public class IQRouter extends BasicModule {
      * <p>Be careful to enforce concurrency DbC of concurrent by synchronizing
      * any accesses to class resources.</p>
      *
-     * @param packet The packet to route
+     * @param packet The packet to routeservice-unavailable
      * @throws NullPointerException If the packet is null
      */
     public void route(IQ packet) {
@@ -283,6 +283,8 @@ public class IQRouter extends BasicModule {
     private void handle(IQ packet) {
         JID recipientJID = packet.getTo();
         // Check if the packet was sent to the server hostname
+       
+        Log.debug("[IQRouter:handle] Handling IQ packet from {} to {}", packet.getFrom(), packet.getTo());
         if (recipientJID != null && recipientJID.getNode() == null &&
                 recipientJID.getResource() == null && DomainManager.getInstance().isRegisteredDomain(recipientJID.getDomain())) {
             Element childElement = packet.getChildElement();
@@ -342,8 +344,10 @@ public class IQRouter extends BasicModule {
                                 PrivacyListManager.getInstance().getDefaultPrivacyList(recipientJID.toBareJID(), recipientJID.getDomain());
                         if (list != null && list.shouldBlockPacket(packet)) {
                             // Communication is blocked
-                            if (IQ.Type.set == packet.getType() || IQ.Type.get == packet.getType()) {
-                                // Answer that the service is unavailable
+                            if (IQ.Type.set == packet.getType() || IQ.Type.get == packet.getType()) 
+                            {
+                            	Log.debug("[IQRouter:handle] Communication is blocket to recipient user {} from user{}.  Sending service-unavailable", packet.getTo(), packet.getFrom());
+                            	// Answer that the service is unavailable
                                 sendErrorPacket(packet, PacketError.Condition.service_unavailable);
                             }
                             return;
@@ -376,8 +380,10 @@ public class IQRouter extends BasicModule {
                 // RFC 6121 8.5.1.  No Such User http://xmpp.org/rfcs/rfc6121.html#rules-localpart-nosuchuser
                 // If the 'to' address specifies a bare JID <localpart@domainpart> or full JID <localpart@domainpart/resourcepart> where the domainpart of the JID matches a configured domain that is serviced by the server itself, the server MUST proceed as follows.
                 // If the user account identified by the 'to' attribute does not exist, how the stanza is processed depends on the stanza type.
-                if (recipientJID != null && recipientJID.getNode() != null && DomainManager.getInstance().isRegisteredDomain(recipientJID.getDomain()) && !userManager.isRegisteredUser(recipientJID.getNode()) && sessionManager.getSession(recipientJID) == null && (IQ.Type.set == packet.getType() || IQ.Type.get == packet.getType())) {
-                    // For an IQ stanza, the server MUST return a <service-unavailable/> stanza error to the sender.
+                if (recipientJID != null && recipientJID.getNode() != null && DomainManager.getInstance().isRegisteredDomain(recipientJID.getDomain()) && !userManager.isRegisteredUser(recipientJID.toBareJID()) && sessionManager.getSession(recipientJID) == null && (IQ.Type.set == packet.getType() || IQ.Type.get == packet.getType())) {
+                    
+                	Log.debug("[IQRouter:handle] No such recipient user {}.  Sending service-unavailable", packet.getTo());
+                	// For an IQ stanza, the server MUST return a <service-unavailable/> stanza error to the sender.
                     sendErrorPacket(packet, PacketError.Condition.service_unavailable);
                     return;
                 }
