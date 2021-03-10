@@ -185,7 +185,15 @@ public class ClusterManager {
                                 } 
                                 else if (eventType == EventType.left_cluster) 
                                 {
-                                    CacheFactory.leftCluster();
+                                	if (!isClusteringEnabled())
+                                	{
+                                		// this is most likely due a shutdown in the server
+                                		// it is a waste of shutdown time to copy objects from the 
+                                		// cluster cache to a local cache when the server is about 
+                                		// to terminate
+                                		CacheFactory.leftCluster();
+                                	}
+                                    
                                 }
                             }
                             // Now notify rest of the listeners
