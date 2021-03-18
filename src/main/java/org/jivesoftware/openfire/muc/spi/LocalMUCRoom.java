@@ -686,16 +686,8 @@ public class LocalMUCRoom implements MUCRoom, GroupEventListener {
         }
         // Notify other cluster nodes that a new occupant joined the room
         CacheFactory.doClusterTask(new OccupantAddedEvent(this, joinRole));
-        lock.writeLock().lock();
-        try
-        {
-        	mucService.persistRoomCacheState(this);
-        }
-        finally
-        {
-        	lock.writeLock().unlock();
-        }
-        	
+        mucService.persistRoomCacheState(this);
+        
         // Send presence of existing occupants to new occupant
         sendInitialPresences(joinRole);
         // It is assumed that the room is new based on the fact that it's locked and
@@ -931,17 +923,7 @@ public class LocalMUCRoom implements MUCRoom, GroupEventListener {
                 }
             }
             else
-            {
-            	lock.writeLock().lock();
-            	try
-            	{
-            		mucService.persistRoomCacheState(this);
-            	}
-            	finally
-            	{
-            		lock.writeLock().unlock();
-            	}
-            }
+            	mucService.persistRoomCacheState(this);
             if (occupantsByFullJID.isEmpty()) {
                 // Update the date when the last occupant left the room
                 setEmptyDate(new Date());
@@ -1484,15 +1466,7 @@ public class LocalMUCRoom implements MUCRoom, GroupEventListener {
             }
         }
         
-        lock.writeLock().lock();
-        try
-        {
-        	mucService.persistRoomCacheState(this);
-        }
-        finally
-        {
-        	lock.writeLock().unlock();	
-        }
+        mucService.persistRoomCacheState(this);
         // Answer all the updated presences
         return presences;
     }
@@ -1537,15 +1511,7 @@ public class LocalMUCRoom implements MUCRoom, GroupEventListener {
                 }
             }
         }
-        lock.writeLock().lock();
-        try
-        {
-        	mucService.persistRoomCacheState(this);
-        }
-        finally
-        {
-        	lock.writeLock().unlock();
-        }
+        mucService.persistRoomCacheState(this);
         return null;
     }
 
@@ -1963,16 +1929,8 @@ public class LocalMUCRoom implements MUCRoom, GroupEventListener {
                 Log.error("Error updating presences for " + occupantJID, e);
             }
         }
+        mucService.persistRoomCacheState(this);
         
-        lock.writeLock().lock();
-        try
-        {
-        	mucService.persistRoomCacheState(this);
-        }
-        finally
-        {
-        	lock.writeLock().unlock();
-        }
         return updatedPresences;
     }
 
@@ -2011,16 +1969,8 @@ public class LocalMUCRoom implements MUCRoom, GroupEventListener {
         // MUC role.
         final UpdatePresence clusterUpdateRequest = new UpdatePresence(this, updatedPresence, occupantNickName);
         CacheFactory.doClusterTask(clusterUpdateRequest);
+        mucService.persistRoomCacheState(this);
         
-        lock.writeLock().lock();
-        try
-        {
-        	mucService.persistRoomCacheState(this);
-        }
-        finally
-        {
-        	lock.writeLock().unlock();
-        }
         // Broadcast updated presence of occupant.
         broadcastPresence(updatedPresence, false);
     }
@@ -2083,15 +2033,7 @@ public class LocalMUCRoom implements MUCRoom, GroupEventListener {
                 }
             }
         }
-        lock.writeLock().lock();
-        try
-        {
-        	mucService.persistRoomCacheState(this);
-        }
-        finally
-        {
-        	lock.writeLock().unlock();
-        }
+        mucService.persistRoomCacheState(this);
         return result;
     }
 
@@ -2146,15 +2088,7 @@ public class LocalMUCRoom implements MUCRoom, GroupEventListener {
         request.setOriginator(true);
         request.run();
 
-        lock.writeLock().lock();
-        try
-        {
-        	mucService.persistRoomCacheState(this);
-        }
-        finally
-        {
-        	lock.writeLock().unlock();	
-        }
+        mucService.persistRoomCacheState(this);
         // Broadcast new presence of occupant
         broadcastPresence(occupantRole.getPresence().createCopy(), false);
     }
@@ -2200,16 +2134,7 @@ public class LocalMUCRoom implements MUCRoom, GroupEventListener {
 
             // Let other cluster nodes that the room has been updated
             CacheFactory.doClusterTask(new RoomUpdatedEvent(this));
-            
-            lock.writeLock().lock();
-            try
-            {
-            	mucService.persistRoomCacheState(this);
-            }
-            finally
-            {
-            	lock.writeLock().unlock();
-            }
+            mucService.persistRoomCacheState(this);
         }
         else {
             throw new ForbiddenException();
@@ -2474,16 +2399,7 @@ public class LocalMUCRoom implements MUCRoom, GroupEventListener {
                 // Remove the occupant from the room's occupants lists
                 event = new OccupantLeftEvent(this, kickedRole);
                 CacheFactory.doClusterTask(event);
-                
-                lock.writeLock().lock();
-                try
-                {
-                	mucService.persistRoomCacheState(this);
-                }
-                finally
-                {
-                	lock.writeLock().unlock();
-                }
+                mucService.persistRoomCacheState(this);
             }
         }
     }
