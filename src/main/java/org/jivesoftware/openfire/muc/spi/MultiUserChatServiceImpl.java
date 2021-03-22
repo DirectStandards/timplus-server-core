@@ -80,6 +80,15 @@ public class MultiUserChatServiceImpl implements Component, MultiUserChatService
     private static final Logger Log = LoggerFactory.getLogger(MultiUserChatServiceImpl.class);
 
     /**
+     * Queue that holds the messages to log for the rooms that need to log their conversations.
+     * Each domain in the server results in an instance of this class, so we need to control the number
+     * of instances of the archiver, otherwise the number of archiving threads will go out of control.
+     * The archiver should already be thread safe as single instance already handles messages from multiple
+     * rooms within a domain.
+     */
+    private static Archiver<ConversationLogEntry> archiver;
+    
+    /**
      * The time to elapse between clearing of idle chat users.
      */
     private int user_timeout = 300000;
@@ -204,11 +213,6 @@ public class MultiUserChatServiceImpl implements Component, MultiUserChatService
      * permissions as a room owner. Might also contain group jids.
      */
     private GroupAwareList<JID> sysadmins = new ConcurrentGroupList<>();
-
-    /**
-     * Queue that holds the messages to log for the rooms that need to log their conversations.
-     */
-    private Archiver<ConversationLogEntry> archiver;
 
     /**
      * Max number of hours that a persistent room may be empty before the service removes the

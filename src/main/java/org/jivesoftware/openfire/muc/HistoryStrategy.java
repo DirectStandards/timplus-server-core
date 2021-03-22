@@ -23,6 +23,7 @@ import java.util.LinkedList;
 import java.util.ListIterator;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
+import org.jivesoftware.openfire.cluster.ClusterManager;
 import org.jivesoftware.openfire.muc.cluster.UpdateHistoryStrategy;
 import org.jivesoftware.openfire.muc.spi.MUCPersistenceManager;
 import org.jivesoftware.util.JiveGlobals;
@@ -50,6 +51,13 @@ public class HistoryStrategy {
      */
     private Type type = Type.number;
 
+    /**
+     * The ID of the room that the history is maintained for.  This is used for
+     * retrieving history from the MUCPersistenceManager in a clustered configuration.
+     * A value of -1 indicates that room history is not available.
+     */
+    private long roomId = -1;
+    
     /**
      * List containing the history of messages.
      */
@@ -109,6 +117,11 @@ public class HistoryStrategy {
         return maxNumber;
     }
 
+    public void setRoomId(long roomId)
+    {
+    	this.roomId = roomId; 
+    }
+    
     /**
      * Set the maximum number of messages for strategies using message number limitations.
      *
@@ -222,8 +235,18 @@ public class HistoryStrategy {
      * 
      * @return An iterator of Message objects to be sent to the new room member.
      */
-    public Iterator<Message> getMessageHistory(){
-        LinkedList<Message> list = new LinkedList<>(history);
+    public Iterator<Message> getMessageHistory()
+    {
+    	LinkedList<Message> list = null;
+    	if (!ClusterManager.isClusteringStarted() || roomId == -1)
+    	{
+	        list = new LinkedList<>(history);
+
+    	}
+    	else
+    	{
+    		list = MUCPersistenceManager.getRoomMessgageHistory(roomId);
+    	}
         // Sort messages. Messages may be out of order when running inside of a cluster
         Collections.sort(list, new MessageComparator());
         return list.iterator();
@@ -237,7 +260,16 @@ public class HistoryStrategy {
      * @return A list iterator of Message objects positioned at the end of the list.
      */
     public ListIterator<Message> getReverseMessageHistory(){
-        LinkedList<Message> list = new LinkedList<>(history);
+        
+    	LinkedList<Message> list = null;
+    	if (!ClusterManager.isClusteringStarted() || roomId == -1)
+    	{
+    		list = new LinkedList<>(history);
+    	}
+    	else
+    	{
+    		list = MUCPersistenceManager.getRoomMessgageHistory(roomId);
+    	}
         // Sort messages. Messages may be out of order when running inside of a cluster
         Collections.sort(list, new MessageComparator());
         return list.listIterator(list.size());

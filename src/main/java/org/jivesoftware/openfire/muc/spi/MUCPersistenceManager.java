@@ -16,6 +16,7 @@
 
 package org.jivesoftware.openfire.muc.spi;
 
+import java.io.StringReader;
 import java.math.BigInteger;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -24,19 +25,25 @@ import java.sql.SQLException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.dom4j.Element;
+import org.dom4j.io.XMPPPacketReader;
 import org.jivesoftware.database.DbConnectionManager;
 import org.jivesoftware.database.SequenceManager;
 import org.jivesoftware.openfire.PacketRouter;
 import org.jivesoftware.openfire.XMPPServer;
 import org.jivesoftware.openfire.group.GroupJID;
 import org.jivesoftware.openfire.muc.*;
+import org.jivesoftware.openfire.net.MXParser;
 import org.jivesoftware.util.JiveConstants;
 import org.jivesoftware.util.JiveGlobals;
-import org.jivesoftware.util.LinkedList;
 import org.jivesoftware.util.StringUtils;
+import org.jivesoftware.util.XMPPDateTimeFormat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.messaging.MessagingException;
+import org.xmlpull.v1.XmlPullParserFactory;
 import org.xmpp.packet.JID;
+import org.xmpp.packet.Message;
 
 /**
  * A manager responsible for ensuring room persistence. There are different ways to make a room
@@ -46,7 +53,7 @@ import org.xmpp.packet.JID;
  *
  * After the problem with the database has been solved, the information saved in the XML files will
  * be moved to the database.
- *
+ * s
  * @author Gaston Dombiak
  */
 public class MUCPersistenceManager {
@@ -94,6 +101,9 @@ public class MUCPersistenceManager {
         "ofMucConversationLog, ofMucRoom WHERE ofMucConversationLog.roomID = ofMucRoom.roomID AND " +
         "ofMucRoom.serviceID=? AND ofMucConversationLog.logTime>? AND (ofMucConversationLog.nickname IS NOT NULL " +
         "OR ofMucConversationLog.subject IS NOT NULL) ORDER BY ofMucConversationLog.logTime";
+    private static final String LOAD_ALL_HISTORY_TEXT =
+            "SELECT stanza, logTime, sender FROM " +
+            "ofMucConversationLog where roomID=? AND ofMucConversationLog.nickname IS NOT NULL ORDER BY logTime DESC";    
     private static final String UPDATE_ROOM =
         "UPDATE ofMucRoom SET modificationDate=?, naturalName=?, description=?, " +
         "canChangeSubject=?, maxUsers=?, publicRoom=?, moderated=?, membersOnly=?, " +
@@ -640,6 +650,52 @@ public class MUCPersistenceManager {
         }
     }
 
+    public static LinkedList<Message> getRoomMessgageHistory(Long roomId)
+    {
+    	final LinkedList<Message> retVal = new LinkedList<>();
+    	
+        Connection connection = null;
+        PreparedStatement statement = null;
+        ResultSet resultSet = null;
+        try 
+        {
+            connection = DbConnectionManager.getConnection();
+            statement = connection.prepareStatement(LOAD_ALL_HISTORY_TEXT);
+
+            final int historyLimit = 50;
+
+            statement.setLong(1, roomId);
+            statement.setMaxRows(historyLimit);
+            resultSet = statement.executeQuery();
+
+            while (resultSet.next()) 
+            {	
+            	final String stanza = resultSet.getString(1);
+            	final Message msg = xmlToMessage(stanza);
+            	
+            	// these are delayed  messages
+            	final Element delayInformation = msg.addChildElement("delay", "urn:xmpp:delay");
+            	final Date dt = new Date(Long.parseLong(resultSet.getString(2)));
+            	delayInformation.addAttribute("stamp", XMPPDateTimeFormat.format(dt));
+            	
+            	// In TIM+, nobody's JID is private
+            	delayInformation.addAttribute("from", resultSet.getString(3));
+            	if (msg != null)
+            		retVal.addLast(msg);
+            }
+        }
+        catch (SQLException e) 
+        {
+        	Log.warn("A database exception prevented the history for one particular MUC room to be loaded from the database.", e);
+        }        
+        finally 
+        {
+            DbConnectionManager.closeConnection(resultSet, statement, connection);
+        }
+ 	
+        return retVal;
+    }
+    
     private static void loadAffiliations(Long serviceID, Map<Long, LocalMUCRoom> rooms) throws SQLException {
         Connection connection = null;
         PreparedStatement statement = null;
@@ -1357,5 +1413,39 @@ public class MUCPersistenceManager {
     public static void refreshProperties(String subdomain, String domain) {
         propertyMaps.replace(MultiUserChatManager.toFQDN(subdomain, domain), new MUCServiceProperties(subdomain, domain));
     }
+    
+	protected static Message xmlToMessage(String XML)
+	{
+		try
+		{
+			Message retVal = null;
+			
+			XmlPullParserFactory factory = XmlPullParserFactory.newInstance(MXParser.class.getName(), null);
+	        factory.setNamespaceAware(true);
+	        final XMPPPacketReader parser = new XMPPPacketReader();
+	        parser.setXPPFactory( factory );
+	        
+	        
+			
+			Element doc = parser.read(new StringReader(XML)).getRootElement();
+			
+			String tag = doc.getName();
+			
+			switch(tag)
+			{
+				case "message":
+				{
+					retVal = new org.xmpp.packet.Message(doc, true);
+					break;
+				}					
+			}
+			
+			return retVal;
+		}
+		catch (Exception e)
+		{
+			throw new MessagingException("Failed to convert cluster packet from internal structure");
+		}
+	}    
     
 }

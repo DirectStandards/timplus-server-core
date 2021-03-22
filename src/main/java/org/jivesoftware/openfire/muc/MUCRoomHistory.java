@@ -52,6 +52,7 @@ public final class MUCRoomHistory {
         this.room = mucRoom;
         this.isNonAnonymousRoom = mucRoom.canAnyoneDiscoverJID();
         this.historyStrategy = historyStrategy;
+        this.historyStrategy.setRoomId(room.getID());
     }
 
     public void addMessage(Message packet) {
