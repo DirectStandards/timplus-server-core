@@ -1332,9 +1332,17 @@ public class MultiUserChatServiceImpl implements Component, MultiUserChatService
         // values)
         userTimeoutTask = new UserTimeoutTask();
         TaskEngine.getInstance().schedule(userTimeoutTask, user_timeout, user_timeout);
-        archiver = new ConversationLogEntryArchiver( "MUC Service " + this.getAddress().toString(), logMaxConversationBatchSize, logMaxBatchInterval, logBatchGracePeriod );
-        XMPPServer.getInstance().getArchiveManager().add( archiver );
-
+        
+        synchronized(MultiUserChatServiceImpl.class)
+        {
+	        if (archiver == null)
+	        {
+	        	archiver = new ConversationLogEntryArchiver( "MUC Service " + this.getAddress().toString(), logMaxConversationBatchSize, logMaxBatchInterval, logBatchGracePeriod );
+		        XMPPServer.getInstance().getArchiveManager().add( archiver );
+	        }
+	        
+        }
+        
         // Remove unused rooms from memory
         long cleanupFreq = JiveGlobals.getLongProperty(
             "xmpp.muc.cleanupFrequency.inMinutes", CLEANUP_FREQUENCY) * 60 * 1000;
