@@ -224,7 +224,7 @@ public class MultiUserChatManager extends BasicModule implements ClusterEventLis
      * @throws AlreadyExistsException if the service already exists.
      */
     public MultiUserChatServiceImpl createMultiUserChatService(String subdomain, String domain, String description, Boolean isHidden) throws AlreadyExistsException {
-        if (getMultiUserChatServiceID(subdomain, domain) != null) throw new AlreadyExistsException();
+        //if (getMultiUserChatServiceID(subdomain, domain) != null) throw new AlreadyExistsException();
         MultiUserChatServiceImpl muc = new MultiUserChatServiceImpl(subdomain, domain, description, isHidden);
         insertService(subdomain, domain, description, isHidden);
         registerMultiUserChatService(muc);
