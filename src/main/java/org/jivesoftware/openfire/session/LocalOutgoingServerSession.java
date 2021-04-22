@@ -460,7 +460,7 @@ public class LocalOutgoingServerSession extends LocalServerSession implements Ou
 //                        		 !JiveGlobals.getBooleanProperty(ConnectionSettings.Server.TLS_ACCEPT_SELFSIGNED_CERTS, false);
                 connection.startTLS(true, false);
             } catch(Exception e) {
-                log.debug("TLS negotiation failed: " + e.getMessage());
+            	log.info("TLS connection failed to remote domain {}", remoteDomain);
                 throw e;
             }
             log.debug( "TLS negotiation was successful. Connection secured. Proceeding with authentication..." );

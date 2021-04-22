@@ -105,20 +105,25 @@ public class PresenceManagerImpl extends BasicModule implements PresenceManager,
         }
         Presence presence = null;
 
-        for (ClientSession session : sessionManager.getSessions(user.getUsername())) {
-            if (presence == null) {
-                presence = session.getPresence();
-            }
-            else {
-                // Get the ordinals of the presences to compare. If no ordinal is available then
-                // assume a value of -1
-                int o1 = presence.getShow() != null ? presence.getShow().ordinal() : -1;
-                int o2 = session.getPresence().getShow() != null ?
-                        session.getPresence().getShow().ordinal() : -1;
-                // Compare the presences' show ordinals
-                if (o1 > o2) {
-                    presence = session.getPresence();
-                }
+        for (ClientSession session : sessionManager.getSessions(user.getUsername())) 
+        {
+            if (session != null)
+            {
+        	
+	        	if (presence == null) {
+	                presence = session.getPresence();
+	            }
+	            else {
+	                // Get the ordinals of the presences to compare. If no ordinal is available then
+	                // assume a value of -1
+	                int o1 = presence.getShow() != null ? presence.getShow().ordinal() : -1;
+	                int o2 = session.getPresence().getShow() != null ?
+	                        session.getPresence().getShow().ordinal() : -1;
+	                // Compare the presences' show ordinals
+	                if (o1 > o2) {
+	                    presence = session.getPresence();
+	                }
+	            }
             }
         }
         return presence;
@@ -449,7 +454,7 @@ public class PresenceManagerImpl extends BasicModule implements PresenceManager,
                     	Presence presencePacket = entry.getValue();
                         presencePacket.setFrom(entry.getKey());
                         // Check if a privacy list of the probee blocks the outgoing presence
-                        PrivacyList list = PrivacyListManager.getInstance().getPrivacyList(entry.getKey().asBareJID().toString(), entry.getKey().getDomain(), "");
+                        PrivacyList list = PrivacyListManager.getInstance().getPrivacyList(entry.getKey().asBareJID().toString(), entry.getKey().getDomain(), "blocklist");
 
                         // Send presence to all prober's resources
                         for (JID receipient : proberFullJIDs) {
@@ -514,7 +519,7 @@ public class PresenceManagerImpl extends BasicModule implements PresenceManager,
         if (XMPPServer.getInstance().isLocal(userJID) && userManager.isRegisteredUser(userJID.toBareJID())) {
             for (ClientSession session : sessionManager.getSessions(userJID.toBareJID())) {
                 // Do not send an unavailable presence if the user sent a direct available presence
-                if (presenceUpdateHandler.hasDirectPresence(session.getAddress(), recipientJID)) {
+                if (session == null || presenceUpdateHandler.hasDirectPresence(session.getAddress(), recipientJID)) {
                     continue;
                 }
                 Presence presencePacket = new Presence();

@@ -495,21 +495,19 @@ public class IQBlockingHandler extends IQHandler implements ServerFeaturesProvid
 
         Log.debug( "Pushing blocklist updates to all resources of user '{}' that have previously requested the blocklist.", user.getUsername() );
 
-        final Collection<ClientSession> sessions = sessionManager.getSessions( user.getUsername() );
-        for ( final ClientSession session : sessions )
+        final Collection<JID> resourceJIDs = XMPPServer.getInstance().getRoutingTable().getRoutes(user.getJID(), null);
+        //for ( final ClientSession session : sessions )
+        for (JID resourceJID : resourceJIDs)
         {
-            if ( session.hasRequestedBlocklist() )
+            final IQ iq = new IQ( IQ.Type.set );
+            iq.setTo( resourceJID );
+            final Element block = iq.setChildElement( "unblock", "urn:xmpp:blocking" );
+            for ( final JID newBlock : newBlocks )
             {
-                final IQ iq = new IQ( IQ.Type.set );
-                iq.setTo( session.getAddress() );
-                final Element block = iq.setChildElement( "unblock", "urn:xmpp:blocking" );
-                for ( final JID newBlock : newBlocks )
-                {
-                    block.addElement( "item" ).addAttribute( "jid", newBlock.toString() );
-                }
-
-                XMPPServer.getInstance().getPacketRouter().route( iq );
+                block.addElement( "item" ).addAttribute( "jid", newBlock.toString() );
             }
+
+            XMPPServer.getInstance().getPacketRouter().route( iq );
         }
     }
 }

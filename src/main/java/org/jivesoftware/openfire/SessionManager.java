@@ -684,9 +684,12 @@ public class SessionManager extends BasicModule implements ClusterEventListener
             // Send the presence of an existing session to the session that has just changed
             // the presence
             ClientSessionInfo userSessionInfo = sessionInfoCache.get(address.toString());
-            presence = userSessionInfo.getPresence().createCopy();
-            presence.setTo(session.getAddress());
-            session.process(presence);
+            if (userSessionInfo != null)
+            {
+            	presence = userSessionInfo.getPresence().createCopy();
+            	presence.setTo(session.getAddress());
+            	session.process(presence);
+            }
         }
     }
 
