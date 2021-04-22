@@ -66,6 +66,7 @@ import org.xmpp.packet.IQ;
 import org.xmpp.packet.JID;
 import org.xmpp.packet.Packet;
 import org.xmpp.packet.PacketError;
+import org.xmpp.packet.IQ.Type;
 
 /**
  * Manages the transfering of files between two remote entities on the jabber network.
@@ -501,7 +502,8 @@ public class FileTransferProxy extends BasicModule
             if (handleIQ((IQ) packet)) {
                 // Do nothing
             }
-            else {
+            else if (((IQ)packet).getType() != Type.result) 
+            {
                 IQ reply = IQ.createResultIQ((IQ) packet);
                 reply.setChildElement(((IQ) packet).getChildElement().createCopy());
                 reply.setError(PacketError.Condition.feature_not_implemented);
