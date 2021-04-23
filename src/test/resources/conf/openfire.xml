@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Minimal Openfire configuration to allow JiveGlobals.getProperty() to complete without complaining to stderr -->
+<jive>
+    <connectionProvider> 
+      <className>org.jivesoftware.DatasourceConnectionProvider</className> 
+    </connectionProvider>   
+</jive>
