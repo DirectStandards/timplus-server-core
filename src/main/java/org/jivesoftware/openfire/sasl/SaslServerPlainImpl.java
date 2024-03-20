@@ -25,6 +25,7 @@ import javax.security.sasl.Sasl;
 import javax.security.sasl.SaslServer;
 
 import org.jivesoftware.openfire.session.LocalSession;
+import org.jivesoftware.util.JiveGlobals;
 
 import javax.security.sasl.SaslException;
 import javax.security.sasl.AuthorizeCallback;
@@ -117,7 +118,14 @@ public class SaslServerPlainImpl implements SaslServer, SessionAwareSaslServer {
                 }
                 if (localSession != null)
                 	username += "@" + localSession.getServerName();
-                
+
+                /*
+                clients like pidgin, pass in the username, not the barejid, so the db query for the user fails.
+                When timplus.allowLoginWithoutBareJID is set, we pass in the barejid (user@domain), so the query will work.
+                 */
+                if( Boolean.parseBoolean(JiveGlobals.getProperty("timplus.allowLoginWithoutBareJID"))) {
+                    principal = username;
+                }
                 password = tokens.nextToken();
                 NameCallback ncb = new NameCallback("PLAIN authentication ID: ",principal);
                 VerifyPasswordCallback vpcb = new VerifyPasswordCallback(password.toCharArray());

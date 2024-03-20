@@ -32,6 +32,7 @@ import org.jivesoftware.openfire.auth.AuthToken;
 import org.jivesoftware.openfire.auth.AuthorizationManager;
 import org.jivesoftware.openfire.sasl.VerifyPasswordCallback;
 import org.jivesoftware.openfire.user.UserNotFoundException;
+import org.jivesoftware.util.JiveGlobals;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -116,6 +117,13 @@ public class XMPPCallbackHandler implements CallbackHandler {
                     if (Log.isDebugEnabled()) {
                         //Log.debug("XMPPCallbackHandler: no username requested, using " + username);
                     }
+                }
+                /*
+                clients like pidgin, pass in the username, not the barejid, so the db query for the user fails.
+                When timplus.allowLoginWithoutBareJID is set, we pass in the barejid (user@domain), so the query will work.
+                 */
+                if( Boolean.parseBoolean(JiveGlobals.getProperty("timplus.allowLoginWithoutBareJID"))) {
+                    username = principal;
                 }
                 if (AuthorizationManager.authorize(username, principal)) {
                     if (Log.isDebugEnabled()) {
